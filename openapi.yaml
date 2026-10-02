@@ -1,0 +1,1417 @@
+openapi: 3.0.3
+info:
+  title: MatchMaker API Contract for CRS Integration
+  version: 0.1.0
+  description: |
+    API contract used by CRS to integrate with MatchMaker/Epsilon.
+    This specification is derived from the current CRS integration and requires
+    MatchMaker validation before being treated as the official external contract.
+  contact:
+    name: CRS / MatchMaker integration team
+  license:
+    name: Internal integration contract
+servers:
+  - url: https://{host}
+    description: MatchMaker environment host
+    variables:
+      host:
+        default: matchmaker.example.invalid
+        description: Replace with the GAP or GAP_EAST MatchMaker host.
+tags:
+  - name: Authentication
+    description: Authentication and token endpoints.
+  - name: Health
+    description: Connectivity and health endpoints.
+  - name: Candidate read
+    description: Candidate data and inbound synchronization endpoints.
+  - name: Candidate registration
+    description: Candidate registration endpoints.
+  - name: Candidate update
+    description: Candidate profile and history update endpoints.
+  - name: Compliance and files
+    description: Compliance, contact log and file endpoints.
+  - name: Reserved
+    description: Defined in CRS but not currently called at runtime.
+security:
+  - basicAuth: []
+paths:
+  /api/Accounts/GetAccessToken:
+    get:
+      tags: [Authentication]
+      summary: Get the Epsilon master token
+      operationId: getAccessToken
+      x-crs-integration-status: active
+      description: CRS caches usr_token per MatchMaker database source.
+      responses:
+        '200':
+          description: Master token issued.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MasterTokenResponse'
+        default:
+          $ref: '#/components/responses/Error'
+
+  /api/General/Ping:
+    get:
+      tags: [Health]
+      summary: Check MatchMaker availability
+      operationId: ping
+      x-crs-integration-status: active
+      responses:
+        '200':
+          $ref: '#/components/responses/EmptySuccess'
+        default:
+          $ref: '#/components/responses/Error'
+
+  /api/Onboarding/CheckForDuplicate:
+    get:
+      tags: [Candidate read]
+      summary: Check an existing candidate by peo_no
+      operationId: checkDuplicateByPeoNo
+      x-crs-integration-status: active
+      parameters:
+        - $ref: '#/components/parameters/PeoNoQuery'
+      responses:
+        '200':
+          description: Candidate is not duplicated, or the response body is ProfileExists.
+          content:
+            text/plain:
+              schema:
+                type: string
+              examples:
+                profileExists:
+                  value: ProfileExists
+        '409':
+          description: Candidate already exists.
+          content:
+            text/plain:
+              schema:
+                type: string
+        default:
+          $ref: '#/components/responses/Error'
+
+  /api/Candidates/CheckForDuplicate:
+    get:
+      tags: [Candidate read]
+      summary: Check duplicate candidate data
+      operationId: checkDuplicateCandidate
+      x-crs-integration-status: active
+      parameters:
+        - name: peo_email
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: peo_forename
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: peo_surname
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: peo_other_tel
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: peo_postcode
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          $ref: '#/components/responses/EmptySuccess'
+        default:
+          $ref: '#/components/responses/Error'
+
+  /api/Candidates/GetDetails:
+    get:
+      tags: [Candidate read]
+      summary: Get candidate details
+      operationId: getCandidateDetails
+      x-crs-integration-status: active
+      description: Candidate context is supplied through authentication headers.
+      responses:
+        '200':
+          description: Candidate details.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CandidateDetails'
+        default:
+          $ref: '#/components/responses/Error'
+
+  /api/Candidates/GetPicture:
+    get:
+      tags: [Candidate read]
+      summary: Get a candidate profile picture
+      operationId: getCandidatePicture
+      x-crs-integration-status: active
+      description: The response body is base64 image data without a JSON wrapper.
+      responses:
+        '200':
+          description: Base64 encoded image.
+          content:
+            text/plain:
+              schema:
+                type: string
+                format: byte
+        default:
+          $ref: '#/components/responses/Error'
+
+  /api/Candidates/GetCareer:
+    get:
+      tags: [Candidate read]
+      summary: Get candidate career history
+      operationId: getCandidateCareer
+      x-crs-integration-status: active
+      responses:
+        '200':
+          description: Candidate career history.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CareerResponse'
+        default:
+          $ref: '#/components/responses/Error'
+
+  /api/Candidates/GetEducation:
+    get:
+      tags: [Candidate read]
+      summary: Get candidate education history
+      operationId: getCandidateEducation
+      x-crs-integration-status: active
+      responses:
+        '200':
+          description: Candidate education history.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Education'
+        default:
+          $ref: '#/components/responses/Error'
+
+  /api/Candidates/GetCandidatesByStatusDate:
+    get:
+      tags: [Candidate read]
+      summary: Get candidate status changes by date
+      operationId: getCandidatesByStatusDate
+      x-crs-integration-status: active
+      parameters:
+        - name: dt
+          in: query
+          required: true
+          schema:
+            $ref: '#/components/schemas/DateOnly'
+      responses:
+        '200':
+          description: Candidate status changes.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/StatusChange'
+        default:
+          $ref: '#/components/responses/Error'
+
+  /api/General/GetMarketingUpdates:
+    get:
+      tags: [Candidate read]
+      summary: Get marketing preference updates
+      operationId: getMarketingUpdates
+      x-crs-integration-status: active
+      parameters:
+        - name: sinceDate
+          in: query
+          required: true
+          schema:
+            $ref: '#/components/schemas/DateOnly'
+      responses:
+        '200':
+          description: Marketing preference updates.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/MarketingUpdate'
+        default:
+          $ref: '#/components/responses/Error'
+
+  /api/General/GetCandsOnPlan:
+    get:
+      tags: [Candidate read]
+      summary: Get candidates on plan by start date
+      operationId: getCandidatesOnPlan
+      x-crs-integration-status: active
+      parameters:
+        - name: startDate
+          in: query
+          required: true
+          schema:
+            $ref: '#/components/schemas/DateOnly'
+      responses:
+        '200':
+          description: Candidates on plan.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/OnPlanItem'
+        default:
+          $ref: '#/components/responses/Error'
+    post:
+      tags: [Candidate read]
+      summary: Filter a batch of candidates by on-plan status
+      operationId: filterCandidatesOnPlan
+      x-crs-integration-status: active
+      parameters:
+        - name: startDate
+          in: query
+          required: true
+          schema:
+            $ref: '#/components/schemas/DateOnly'
+        - name: endDate
+          in: query
+          required: true
+          schema:
+            $ref: '#/components/schemas/DateOnly'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PeoNoList'
+      responses:
+        '200':
+          description: The peo_no values that are on plan.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UnknownArray'
+        default:
+          $ref: '#/components/responses/Error'
+
+  /api/General/GetClassAndCodes/3:
+    get:
+      tags: [Candidate read]
+      summary: Get skill master data
+      operationId: getSkillMasterData
+      x-crs-integration-status: active
+      responses:
+        '200':
+          description: MatchMaker skill master data.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SkillMasterData'
+        default:
+          $ref: '#/components/responses/Error'
+
+  /api/Candidates/RegisterCandidate:
+    post:
+      tags: [Candidate registration]
+      summary: Register a standard or Permanent candidate
+      operationId: registerCandidate
+      x-crs-integration-status: active
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              anyOf:
+                - $ref: '#/components/schemas/RegisterCandidateStandard'
+                - $ref: '#/components/schemas/RegisterCandidatePermanent'
+      responses:
+        '200':
+          description: Candidate registered.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RegisterCandidateResponse'
+        '400':
+          $ref: '#/components/responses/Error'
+        '409':
+          description: Candidate is duplicated.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UnknownObject'
+        default:
+          $ref: '#/components/responses/Error'
+
+  /api/Candidates/UpdateCandidateMain:
+    put:
+      tags: [Candidate update]
+      summary: Update candidate profile or mark candidate Live
+      operationId: updateCandidateMain
+      x-crs-integration-status: active
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              anyOf:
+                - $ref: '#/components/schemas/CandidateMainUpdate'
+                - $ref: '#/components/schemas/CandidateLiveUpdate'
+      responses:
+        '200':
+          $ref: '#/components/responses/EmptySuccess'
+        '204':
+          $ref: '#/components/responses/EmptySuccess'
+        default:
+          $ref: '#/components/responses/Error'
+
+  /api/Candidates/UpdatePaymentDetails:
+    put:
+      tags: [Candidate update]
+      summary: Update candidate payment details
+      operationId: updatePaymentDetails
+      x-crs-integration-status: active
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PaymentDetails'
+      responses:
+        '200':
+          $ref: '#/components/responses/EmptySuccess'
+        '204':
+          $ref: '#/components/responses/EmptySuccess'
+        default:
+          $ref: '#/components/responses/Error'
+
+  /api/Candidates/UpdateBankDetails:
+    post:
+      tags: [Candidate update]
+      summary: Update candidate bank details directly
+      operationId: updateBankDetails
+      x-crs-integration-status: active
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BankDetails'
+      responses:
+        '200':
+          $ref: '#/components/responses/EmptySuccess'
+        '204':
+          $ref: '#/components/responses/EmptySuccess'
+        default:
+          $ref: '#/components/responses/Error'
+
+  /api/Candidates/UpdateSource:
+    post:
+      tags: [Candidate update]
+      summary: Update candidate recruitment source
+      operationId: updateCandidateSource
+      x-crs-integration-status: active
+      parameters:
+        - name: source
+          in: query
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EmptyArray'
+      responses:
+        '200':
+          $ref: '#/components/responses/EmptySuccess'
+        '204':
+          $ref: '#/components/responses/EmptySuccess'
+        default:
+          $ref: '#/components/responses/Error'
+
+  /api/Candidates/AddCandidateCodes:
+    post:
+      tags: [Candidate update]
+      summary: Add candidate skill codes
+      operationId: addCandidateCodes
+      x-crs-integration-status: active
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SkillCodes'
+      responses:
+        '200':
+          $ref: '#/components/responses/EmptySuccess'
+        '204':
+          $ref: '#/components/responses/EmptySuccess'
+        default:
+          $ref: '#/components/responses/Error'
+
+  /api/Candidates/SavePenPicture:
+    put:
+      tags: [Candidate update]
+      summary: Save candidate pen picture
+      operationId: savePenPicture
+      x-crs-integration-status: active
+      parameters:
+        - name: pen_picture
+          in: query
+          required: true
+          schema:
+            type: string
+            maxLength: 1500
+          description: CRS strips apostrophes, URL-encodes and limits the value to 1500 characters.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EmptyArray'
+      responses:
+        '200':
+          $ref: '#/components/responses/EmptySuccess'
+        '204':
+          $ref: '#/components/responses/EmptySuccess'
+        default:
+          $ref: '#/components/responses/Error'
+
+  /api/Candidates/UpdateCandidateStarterDeclaration:
+    put:
+      tags: [Candidate update]
+      summary: Update candidate starter declaration
+      operationId: updateCandidateStarterDeclaration
+      x-crs-integration-status: active
+      parameters:
+        - name: starterDeclaration
+          in: query
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EmptyArray'
+      responses:
+        '200':
+          $ref: '#/components/responses/EmptySuccess'
+        '204':
+          $ref: '#/components/responses/EmptySuccess'
+        default:
+          $ref: '#/components/responses/Error'
+
+  /api/Candidates/UpdateCandidateConsultant:
+    put:
+      tags: [Candidate update]
+      summary: Update candidate consultant
+      operationId: updateCandidateConsultant
+      x-crs-integration-status: active
+      parameters:
+        - name: conInitials
+          in: query
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EmptyArray'
+      responses:
+        '200':
+          $ref: '#/components/responses/EmptySuccess'
+        '204':
+          $ref: '#/components/responses/EmptySuccess'
+        default:
+          $ref: '#/components/responses/Error'
+
+  /api/Candidates/DeleteCandidateCareer:
+    delete:
+      tags: [Candidate update]
+      summary: Delete a candidate career
+      operationId: deleteCandidateCareer
+      x-crs-integration-status: active
+      parameters:
+        - name: emp_no
+          in: query
+          required: true
+          schema:
+            type: string
+          description: Career ID. Source element type is not enforced by CRS.
+      responses:
+        '200':
+          $ref: '#/components/responses/EmptySuccess'
+        '204':
+          $ref: '#/components/responses/EmptySuccess'
+        default:
+          $ref: '#/components/responses/Error'
+
+  /api/Candidates/AddCandidateCareer:
+    post:
+      tags: [Candidate update]
+      summary: Add a candidate career
+      operationId: addCandidateCareer
+      x-crs-integration-status: active
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CareerInput'
+      responses:
+        '200':
+          $ref: '#/components/responses/EmptySuccess'
+        '204':
+          $ref: '#/components/responses/EmptySuccess'
+        default:
+          $ref: '#/components/responses/Error'
+
+  /api/Candidates/DeleteCandidateEducation:
+    delete:
+      tags: [Candidate update]
+      summary: Delete a candidate education record
+      operationId: deleteCandidateEducation
+      x-crs-integration-status: active
+      parameters:
+        - name: edu_no
+          in: query
+          required: true
+          schema:
+            type: string
+          description: Education ID. Source element type is not enforced by CRS.
+      responses:
+        '200':
+          $ref: '#/components/responses/EmptySuccess'
+        '204':
+          $ref: '#/components/responses/EmptySuccess'
+        default:
+          $ref: '#/components/responses/Error'
+
+  /api/Candidates/AddCandidateEducation:
+    post:
+      tags: [Candidate update]
+      summary: Add a candidate education record
+      operationId: addCandidateEducation
+      x-crs-integration-status: active
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EducationInput'
+      responses:
+        '200':
+          $ref: '#/components/responses/EmptySuccess'
+        '204':
+          $ref: '#/components/responses/EmptySuccess'
+        default:
+          $ref: '#/components/responses/Error'
+
+  /api/Candidates/SavePictureString/{peo_no}:
+    post:
+      tags: [Compliance and files]
+      summary: Save a standard candidate profile picture
+      operationId: saveStandardCandidatePicture
+      x-crs-integration-status: active
+      parameters:
+        - $ref: '#/components/parameters/PeoNoPath'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PictureString'
+      responses:
+        '200':
+          $ref: '#/components/responses/EmptySuccess'
+        default:
+          $ref: '#/components/responses/Error'
+
+  /api/Onboarding/SavePictureString/{peo_no}:
+    post:
+      tags: [Compliance and files]
+      summary: Save an existing candidate profile picture
+      operationId: saveOnboardingCandidatePicture
+      x-crs-integration-status: active
+      parameters:
+        - $ref: '#/components/parameters/PeoNoPath'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PictureString'
+      responses:
+        '200':
+          $ref: '#/components/responses/EmptySuccess'
+        '204':
+          $ref: '#/components/responses/EmptySuccess'
+        default:
+          $ref: '#/components/responses/Error'
+
+  /api/Compliance/UploadAnswer/{peo_no}:
+    post:
+      tags: [Compliance and files]
+      summary: Upload a standard candidate RTW answer
+      operationId: uploadStandardRightToWorkAnswer
+      x-crs-integration-status: active
+      parameters:
+        - $ref: '#/components/parameters/PeoNoPath'
+        - $ref: '#/components/parameters/CheckNumber'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RightToWorkAnswer'
+      responses:
+        '200':
+          $ref: '#/components/responses/EmptySuccess'
+        default:
+          $ref: '#/components/responses/Error'
+
+  /api/Onboarding/UploadAnswer/{peo_no}:
+    post:
+      tags: [Compliance and files]
+      summary: Upload an existing candidate RTW answer
+      operationId: uploadOnboardingRightToWorkAnswer
+      x-crs-integration-status: active
+      parameters:
+        - $ref: '#/components/parameters/PeoNoPath'
+        - $ref: '#/components/parameters/CheckNumber'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RightToWorkAnswer'
+      responses:
+        '200':
+          $ref: '#/components/responses/EmptySuccess'
+        '204':
+          $ref: '#/components/responses/EmptySuccess'
+        default:
+          $ref: '#/components/responses/Error'
+
+  /api/Compliance/UploadAttachment/{peo_no}:
+    post:
+      tags: [Compliance and files]
+      summary: Upload a standard candidate RTW attachment
+      operationId: uploadStandardRightToWorkAttachment
+      x-crs-integration-status: active
+      parameters:
+        - $ref: '#/components/parameters/PeoNoPath'
+        - $ref: '#/components/parameters/CheckNumber'
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/SingleFileUpload'
+      responses:
+        '200':
+          $ref: '#/components/responses/EmptySuccess'
+        default:
+          $ref: '#/components/responses/Error'
+
+  /api/Onboarding/UploadAttachment/{peo_no}:
+    post:
+      tags: [Compliance and files]
+      summary: Upload an existing candidate RTW attachment
+      operationId: uploadOnboardingRightToWorkAttachment
+      x-crs-integration-status: active
+      parameters:
+        - $ref: '#/components/parameters/PeoNoPath'
+        - $ref: '#/components/parameters/CheckNumber'
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/SingleFileUpload'
+      responses:
+        '200':
+          $ref: '#/components/responses/EmptySuccess'
+        '204':
+          $ref: '#/components/responses/EmptySuccess'
+        default:
+          $ref: '#/components/responses/Error'
+
+  /api/Candidates/AddToContactLog:
+    post:
+      tags: [Compliance and files]
+      summary: Add a standard candidate contact log
+      operationId: addStandardCandidateContactLog
+      x-crs-integration-status: active
+      parameters:
+        - $ref: '#/components/parameters/PeoNoQuery'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ContactLogRequest'
+      responses:
+        '200':
+          $ref: '#/components/responses/EmptySuccess'
+        default:
+          $ref: '#/components/responses/Error'
+
+  /api/Onboarding/AddToContactLog:
+    post:
+      tags: [Compliance and files]
+      summary: Add an onboarding contact log
+      operationId: addOnboardingContactLog
+      x-crs-integration-status: active
+      parameters:
+        - $ref: '#/components/parameters/PeoNoQuery'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ContactLogRequest'
+      responses:
+        '200':
+          description: Contact log number returned as the raw response body.
+          content:
+            text/plain:
+              schema:
+                type: string
+        '204':
+          $ref: '#/components/responses/EmptySuccess'
+        default:
+          $ref: '#/components/responses/Error'
+
+  /api/Candidates/UploadAttachment:
+    post:
+      tags: [Compliance and files]
+      summary: Attach a file to a contact log
+      operationId: uploadContactLogAttachment
+      x-crs-integration-status: active
+      parameters:
+        - name: AttachRef
+          in: header
+          required: true
+          schema:
+            type: string
+          description: Contact log number.
+        - name: AttachType
+          in: header
+          required: true
+          schema:
+            type: string
+            example: '3'
+          description: Log attachment type. CRS sends 3.
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              additionalProperties:
+                type: string
+                format: binary
+              description: The multipart field name is dynamic; it is usually file or a generated filename.
+      responses:
+        '200':
+          $ref: '#/components/responses/EmptySuccess'
+        '204':
+          $ref: '#/components/responses/EmptySuccess'
+        default:
+          $ref: '#/components/responses/Error'
+
+  /api/Candidates/UploadAppPack/{peo_no}:
+    post:
+      tags: [Compliance and files]
+      summary: Upload a standard candidate application pack
+      operationId: uploadStandardApplicationPack
+      x-crs-integration-status: active
+      parameters:
+        - $ref: '#/components/parameters/PeoNoPath'
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/SingleFileUpload'
+      responses:
+        '200':
+          $ref: '#/components/responses/EmptySuccess'
+        default:
+          $ref: '#/components/responses/Error'
+
+  /api/Candidates/GetPenPicture:
+    get:
+      tags: [Reserved]
+      summary: Get a candidate pen picture
+      operationId: getCandidatePenPicture
+      deprecated: true
+      x-crs-integration-status: reserved
+      description: Method/constant exists in CRS but no current runtime caller was found.
+      responses:
+        '200':
+          description: Raw pen picture value.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Unknown'
+        default:
+          $ref: '#/components/responses/Error'
+
+  /api/Candidates/GetContactLogAttachments:
+    get:
+      tags: [Reserved]
+      summary: Get contact log attachments
+      operationId: getContactLogAttachments
+      deprecated: true
+      x-crs-integration-status: reserved
+      parameters:
+        - name: logNo
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Attachment list with an externally defined item schema.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UnknownArray'
+        default:
+          $ref: '#/components/responses/Error'
+
+  /api/Accounts/CandidateLoginPost:
+    post:
+      tags: [Reserved]
+      summary: Candidate login
+      operationId: candidateLogin
+      deprecated: true
+      x-crs-integration-status: reserved
+      parameters:
+        - $ref: '#/components/parameters/EpsilonPlatform'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginRequest'
+      responses:
+        '200':
+          description: Candidate login response.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CandidateLoginResponse'
+        default:
+          $ref: '#/components/responses/Error'
+
+  /api/Accounts/ClientLoginPost:
+    post:
+      tags: [Reserved]
+      summary: Client login
+      operationId: clientLogin
+      deprecated: true
+      x-crs-integration-status: reserved
+      parameters:
+        - $ref: '#/components/parameters/EpsilonPlatform'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginRequest'
+      responses:
+        '200':
+          description: Client login response.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ClientLoginResponse'
+        default:
+          $ref: '#/components/responses/Error'
+
+  /api/Onboarding/UploadAppPack/{peo_no}:
+    post:
+      tags: [Reserved]
+      summary: Upload an application pack to the first contact log
+      operationId: uploadReservedOnboardingApplicationPack
+      deprecated: true
+      x-crs-integration-status: reserved
+      description: The current CRS implementation uses AddToContactLog plus UploadAttachment instead.
+      parameters:
+        - $ref: '#/components/parameters/PeoNoPath'
+      requestBody:
+        required: true
+        content:
+          application/octet-stream:
+            schema:
+              type: string
+              format: binary
+              description: Payload shape is unknown because there is no current caller.
+      responses:
+        default:
+          $ref: '#/components/responses/Error'
+
+components:
+  securitySchemes:
+    basicAuth:
+      type: http
+      scheme: basic
+
+  parameters:
+    PeoNoPath:
+      name: peo_no
+      in: path
+      required: true
+      schema:
+        type: string
+    PeoNoQuery:
+      name: peo_no
+      in: query
+      required: true
+      schema:
+        type: string
+    CheckNumber:
+      name: chk_no
+      in: query
+      required: true
+      schema:
+        type: string
+        example: '1'
+    EpsilonPlatform:
+      name: platform
+      in: query
+      required: true
+      schema:
+        type: string
+        enum: [Epsilon]
+
+  responses:
+    EmptySuccess:
+      description: Successful response. CRS does not parse the response body.
+    Error:
+      description: Error response. The current CRS integration does not enforce a common error schema.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/UnknownObject'
+        text/plain:
+          schema:
+            type: string
+
+  schemas:
+    Unknown:
+      description: Value whose external schema is not known to the current CRS integration.
+    UnknownObject:
+      type: object
+      additionalProperties: true
+    UnknownArray:
+      type: array
+      items: {}
+    EmptyArray:
+      type: array
+      items: {}
+      maxItems: 0
+    DateOnly:
+      type: string
+      pattern: '^\d{4}-\d{2}-\d{2}$'
+      example: '2026-10-02'
+    DateTime:
+      type: string
+      description: Date/time string produced by the current integration.
+      example: '2026-10-02T12:30:00'
+    MasterTokenResponse:
+      type: object
+      required: [usr_token]
+      properties:
+        usr_token:
+          type: string
+    RegisterCandidateResponse:
+      type: object
+      required: [peo_no]
+      properties:
+        peo_no:
+          type: string
+    CandidateDetails:
+      type: object
+      properties:
+        peo_no: { type: string }
+        peo_title: { type: string }
+        peo_forename: { type: string }
+        peo_surname: { type: string }
+        peo_establish: { type: string }
+        peo_town: { type: string }
+        peo_county: { type: string }
+        peo_postcode: { type: string }
+        peo_country: { type: string }
+        peo_date_birth: { $ref: '#/components/schemas/DateTime' }
+        peo_other_tel: { type: string }
+        peo_email: { type: string }
+        peo_status: { type: string }
+        peo_status_date: { $ref: '#/components/schemas/DateTime' }
+        peo_nationality: { type: string }
+    Career:
+      type: object
+      properties:
+        emp_no: {}
+        emp_cli_name: { type: string }
+        emp_job_title: { type: string }
+        emp_responsibilities: { type: string }
+        emp_from: { type: string }
+        emp_to: { type: string }
+    CareerResponse:
+      type: object
+      required: [careers]
+      properties:
+        careers:
+          type: array
+          items:
+            $ref: '#/components/schemas/Career'
+    Education:
+      type: object
+      properties:
+        edu_no: {}
+        peo_no: {}
+        edu_school: { type: string }
+        edu_quals: { type: string }
+        edu_from: { type: string }
+        edu_to: { type: string }
+    StatusChange:
+      type: object
+      properties:
+        Id: { type: string }
+        Value: { type: string }
+    MarketingUpdate:
+      type: object
+      properties:
+        Id: { type: string }
+        Value:
+          oneOf:
+            - type: boolean
+            - type: string
+    OnPlanItem:
+      type: object
+      properties:
+        Id: { type: string }
+        Value: {}
+    SkillMasterData:
+      type: object
+      properties:
+        sub_categories:
+          type: array
+          items:
+            type: object
+            properties:
+              keywords:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    keyword_no: {}
+                    keyword: { type: string }
+    PeoNoList:
+      type: array
+      items:
+        type: string
+    CareerInput:
+      type: object
+      required: [emp_cli_name, emp_responsibilities, emp_job_title, emp_from, emp_to]
+      properties:
+        emp_cli_name: { type: string }
+        emp_responsibilities: { type: string }
+        emp_job_title: { type: string }
+        emp_from: { type: string }
+        emp_to: { type: string }
+    EducationInput:
+      type: object
+      required: [peo_no, edu_quals, edu_school, edu_from, edu_to]
+      properties:
+        peo_no: {}
+        edu_quals: { type: string }
+        edu_school: { type: string }
+        edu_from: { type: string }
+        edu_to: { type: string }
+    CandidateStandard:
+      type: object
+      properties:
+        peo_title: { type: string }
+        peo_forename: { type: string }
+        peo_surname: { type: string }
+        peo_establish: { type: string }
+        peo_town: { type: string }
+        peo_postcode: { type: string }
+        peo_other_tel: { type: string }
+        peo_pen: { type: string }
+        peo_middlename: { type: string }
+        peo_con: { type: string }
+        peo_gender:
+          type: string
+          enum: [m, f, o]
+        peo_county: { type: string }
+        peo_country: { type: string }
+        peo_email: { type: string }
+        peo_source: { type: string }
+        peo_date_birth: { type: string }
+        peo_salary_sought: { type: integer }
+        peo_seek: { type: string }
+        peo_nationality: { type: string }
+        peo_ni: { type: string }
+        peo_bank_name: { type: string }
+        peo_bank_acc_name: { type: string }
+        peo_bank_number: { type: string }
+        peo_bank_sort_code: { type: string }
+        peo_pay_method: { type: string }
+        peo_student_load: { type: boolean }
+        peo_starter_dec_byemployee: { type: boolean }
+        peo_no:
+          type: string
+          description: Optional existing MatchMaker number.
+    RegisterEducation:
+      type: object
+      properties:
+        emp_from: { type: string }
+        emp_to: { type: string }
+        edu_school: { type: string }
+        edu_quals: { type: string }
+    Overview:
+      type: object
+      properties:
+        transport_type: { type: string }
+        travel_radius: { type: string }
+        currently_employed: { type: boolean }
+        notice_period: { type: string }
+        available_at_short_notice: { type: boolean }
+        pre_booked_unavailability: { type: string }
+        working_restrictions: { type: string }
+    HealthAndSafety:
+      type: object
+      properties:
+        owns_safety_boots:
+          type: object
+          properties:
+            own: { type: boolean }
+            size: { type: string }
+        owns_hi_viz_vest:
+          type: object
+          properties:
+            own: { type: boolean }
+            size: { type: string }
+    ShiftPreference:
+      type: object
+      properties:
+        days: { type: boolean }
+        twilights: { type: boolean }
+        nights: { type: boolean }
+        continental: { type: boolean }
+        weekends: { type: boolean }
+        rotating: { type: boolean }
+        noons: { type: boolean }
+    HealthAndCriminal:
+      type: object
+      properties:
+        any_health_issues: { type: string }
+        any_convictions: { type: string }
+        agree_to_check: { type: boolean }
+    Agreements:
+      type: object
+      properties:
+        data_protection: { type: boolean }
+        opt_out: { type: boolean }
+        health_disability: { type: boolean }
+        dbs: { type: boolean }
+    RegisterCandidateStandard:
+      type: object
+      required:
+        - peo_gdpr_consenttostore
+        - peo_gdpr_consenttoshare
+        - peo_gdpr_consenttomarketing
+        - peo_gdpr_consenttodirectcomm
+        - set_avail
+        - candidate
+        - careers
+        - educations
+        - skills_numbers
+        - overview
+        - health_and_safety
+        - shift_preference
+        - health_and_criminal
+        - references
+        - agreements
+        - start_declaration
+      properties:
+        peo_gdpr_consenttostore: { type: boolean }
+        peo_gdpr_consenttoshare: { type: boolean }
+        peo_gdpr_consenttomarketing: { type: boolean }
+        peo_gdpr_consenttodirectcomm: { type: boolean }
+        set_avail: { type: boolean }
+        candidate:
+          $ref: '#/components/schemas/CandidateStandard'
+        careers:
+          type: array
+          items:
+            $ref: '#/components/schemas/CareerInput'
+        educations:
+          type: array
+          items:
+            $ref: '#/components/schemas/RegisterEducation'
+        skills_numbers:
+          type: array
+          items: {}
+        overview:
+          $ref: '#/components/schemas/Overview'
+        health_and_safety:
+          $ref: '#/components/schemas/HealthAndSafety'
+        shift_preference:
+          $ref: '#/components/schemas/ShiftPreference'
+        health_and_criminal:
+          $ref: '#/components/schemas/HealthAndCriminal'
+        references:
+          type: array
+          items: {}
+        agreements:
+          $ref: '#/components/schemas/Agreements'
+        start_declaration:
+          type: string
+          enum: [A, B, C]
+    CandidatePermanent:
+      type: object
+      properties:
+        peo_title: { type: string }
+        peo_forename: { type: string }
+        peo_middlename: { type: string }
+        peo_surname: { type: string }
+        peo_email: { type: string }
+        peo_other_tel: { type: string }
+        peo_date_birth: { type: string }
+        peo_establish: { type: string }
+        peo_town: { type: string }
+        peo_county: { type: string }
+        peo_postcode: { type: string }
+        peo_source: { type: string }
+        peo_status:
+          type: string
+          enum: [PERM]
+    PermanentOverview:
+      type: object
+      properties:
+        transport_type: { type: string }
+        travel_radius: { type: string }
+    RegisterCandidatePermanent:
+      type: object
+      required: [candidate, overview]
+      properties:
+        candidate:
+          $ref: '#/components/schemas/CandidatePermanent'
+        overview:
+          $ref: '#/components/schemas/PermanentOverview'
+    CandidateMainUpdate:
+      type: object
+      properties:
+        peo_title: { type: string }
+        peo_forename: { type: string }
+        peo_surname: { type: string }
+        peo_date_birth: { type: string }
+        peo_nationality: { type: string }
+        peo_establish: { type: string }
+        peo_street: { type: string }
+        peo_district: { type: string }
+        peo_town: { type: string }
+        peo_county: { type: string }
+        peo_postcode: { type: string }
+        peo_country: { type: string }
+        peo_other_tel: { type: string }
+    CandidateLiveUpdate:
+      type: object
+      required: [peo_status, peo_status_date, peo_date_birth]
+      properties:
+        peo_status:
+          type: string
+          enum: [Live]
+        peo_status_date: { type: string }
+        peo_date_birth: { type: string }
+    PaymentDetails:
+      type: object
+      required: [peo_bank_name, peo_bank_acc_name, peo_bank_number, peo_bank_sort_code]
+      properties:
+        peo_bank_name: { type: string }
+        peo_bank_acc_name: { type: string }
+        peo_bank_number: { type: string }
+        peo_bank_sort_code: { type: string }
+        peo_ni: { type: string }
+    BankDetails:
+      type: object
+      required: [peo_bank_name, peo_bank_acc_name, peo_bank_number, peo_bank_sort_code]
+      properties:
+        peo_bank_name: { type: string }
+        peo_bank_acc_name: { type: string }
+        peo_bank_number: { type: string }
+        peo_bank_sort_code: { type: string }
+    SkillCodes:
+      type: object
+      required: [keyword_no_arr]
+      properties:
+        keyword_no_arr:
+          type: array
+          items: {}
+    PictureString:
+      type: object
+      required: [peo_no, peo_string]
+      properties:
+        peo_no: { type: string }
+        peo_string:
+          type: string
+          format: byte
+    RightToWorkAnswer:
+      type: object
+      required: [peo_bool, peo_text, peo_other, peo_expiry_date, peo_issue_date]
+      properties:
+        peo_bool: { type: boolean }
+        peo_text: { type: string }
+        peo_other: { type: string }
+        peo_expiry_date: { type: string, format: date-time }
+        peo_issue_date: { type: string, format: date-time }
+    ContactLogRequest:
+      type: object
+      required: [log_action, log_subject, log_txt]
+      properties:
+        log_action: { type: string }
+        log_subject: { type: string }
+        log_txt: { type: string }
+    SingleFileUpload:
+      type: object
+      required: [file]
+      properties:
+        file:
+          type: string
+          format: binary
+    LoginRequest:
+      type: object
+      required: [username, password]
+      properties:
+        username: { type: string }
+        password: { type: string, format: password }
+    CandidateLoginResponse:
+      type: object
+      properties:
+        peo_no: {}
+        usr_token: { type: string }
+        usr_token_expiry: { type: string }
+    ClientLoginResponse:
+      type: object
+      properties:
+        peo_no: {}
+        usr_token: { type: string }
