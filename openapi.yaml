@@ -6,6 +6,8 @@ info:
     API contract used by CRS to integrate with MatchMaker/Epsilon.
     This specification is derived from the current CRS integration and requires
     MatchMaker validation before being treated as the official external contract.
+    CRS always uses Basic authentication and may additionally send one or more
+    conditional user-auth headers when the corresponding token is available.
   contact:
     name: CRS / MatchMaker integration team
   license:
@@ -34,6 +36,12 @@ tags:
     description: Defined in CRS but not currently called at runtime.
 security:
   - basicAuth: []
+  - basicAuth: []
+    masterUserAuth: []
+  - basicAuth: []
+    clientUserAuth: []
+  - basicAuth: []
+    candidateUserAuth: []
 paths:
   /api/Accounts/GetAccessToken:
     get:
@@ -971,6 +979,30 @@ components:
     basicAuth:
       type: http
       scheme: basic
+    masterUserAuth:
+      type: apiKey
+      in: header
+      name: MasterUserAuth
+      description: >-
+        Conditional CRS master/session authentication header. The wire value is
+        a base64-encoded peo_no:usr_token pair after GetAccessToken succeeds or
+        a cached master token is available.
+    clientUserAuth:
+      type: apiKey
+      in: header
+      name: CliUserAuth
+      description: >-
+        Conditional client session authentication header. The wire value is a
+        base64-encoded peo_no:usr_token pair after ClientLoginPost. No current
+        CRS runtime caller was found.
+    candidateUserAuth:
+      type: apiKey
+      in: header
+      name: CanUserAuth
+      description: >-
+        Conditional candidate session authentication header. The wire value is
+        a base64-encoded peo_no:usr_token pair after CandidateLoginPost. No
+        current CRS runtime caller was found.
 
   parameters:
     PeoNoPath:

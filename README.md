@@ -17,6 +17,22 @@ Serve this directory with any static file server, then open index.html.
 Enable GitHub Pages with GitHub Actions as the publishing source. Every push to
 main deploys the static Swagger UI.
 
+## Authentication headers
+
+All requests use Basic authentication. Depending on the CRS adapter state, a
+request may also include one or more conditional token headers:
+
+| Header | Type | Wire format | Status |
+|---|---|---|---|
+| `Authorization` | string | `Basic ` + base64(`username:password`) | Required |
+| `MasterUserAuth` | string | base64(`peo_no:usr_token`) | Conditional |
+| `CliUserAuth` | string | base64(`peo_no:usr_token`) | Conditional/reserved |
+| `CanUserAuth` | string | base64(`peo_no:usr_token`) | Conditional/reserved |
+
+The custom headers are declared as security schemes in `openapi.yaml`. Their
+requiredness per endpoint must be confirmed by MatchMaker; the current CRS
+implementation does not send all three headers on every call.
+
 ## Security
 
 This repository must not contain MatchMaker credentials, tokens, or private
