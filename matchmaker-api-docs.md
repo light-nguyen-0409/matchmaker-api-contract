@@ -8,20 +8,35 @@
 > tạo và parse trong source. MM cần xác nhận các field được đánh dấu unknown
 > trước khi xem đây là contract chính thức.
 >
+> **Nguồn Epsilon chính thức đã đối chiếu:** [Swagger UI](https://support.matchmakersoftware.com:31006/help/index#)
+> và [discovery document](https://support.matchmakersoftware.com:31006/docs/2.0.1.0/swagger),
+> version `2.0.1.0`, kiểm tra ngày 2026-10-06. Discovery document công bố 274
+> paths; tài liệu này vẫn chỉ bao phủ CRS integration inventory và reserved calls.
+>
 > Mỗi endpoint được mô tả theo format: mục đích, request, kiểu dữ liệu,
 > success response và status lỗi. Không mô tả business flow hoặc call-chain.
+> Phân loại adapter được ghi ở phần summary: `Epsilon` hoặc `Bespoke / non-Epsilon`.
 
-## 1. API summary
+## 1. API summary theo adapter
 
 Bảng dưới đây là danh sách tổng quát. Contract request/response chi tiết nằm ở
 các section tương ứng bên dưới.
+
+Phân loại dựa trên call path thực tế trong source:
+
+- **Epsilon**: endpoint được gọi qua `App\Externals\EpsilonApi`, là implementation
+  được bind cho `MatchMakerApiInterface`.
+- **Bespoke / non-Epsilon**: endpoint được gọi trực tiếp bằng Guzzle trong
+  `MatchMakerService` hoặc qua `App\Externals\BespokeMatchMaker`, dùng
+  `config('matchmaker.api_setting.*')`.
+
+### 1.1. Epsilon
 
 | ID | Method | Path | Mục đích | Trạng thái |
 |---|---|---|---|---|
 | MM-R01 | GET | /api/Accounts/GetAccessToken | Cấp master token cho CRS | ACTIVE |
 | MM-R02 | GET | /api/General/Ping | Health check MatchMaker | ACTIVE |
 | MM-R03 | GET | /api/Onboarding/CheckForDuplicate?peo_no={peo_no} | Kiểm tra duplicate theo peo_no | ACTIVE |
-| MM-R04 | GET | /api/Candidates/CheckForDuplicate?peo_email={email}&peo_forename={forename}&peo_surname={surname}&peo_other_tel={tel}&peo_postcode={postcode} | Kiểm tra duplicate trước khi register | ACTIVE |
 | MM-R05 | GET | /api/Candidates/GetDetails | Lấy thông tin cơ bản candidate | ACTIVE |
 | MM-R06 | GET | /api/Candidates/GetPicture | Lấy profile picture | ACTIVE |
 | MM-R07 | GET | /api/Candidates/GetCareer | Lấy career history | ACTIVE |
@@ -30,8 +45,6 @@ các section tương ứng bên dưới.
 | MM-R10 | GET | /api/General/GetMarketingUpdates?sinceDate={YYYY-MM-DD} | Lấy marketing preference thay đổi | ACTIVE |
 | MM-R11 | GET | /api/General/GetCandsOnPlan?startDate={YYYY-MM-DD} | Lấy candidate đang on-plan | ACTIVE |
 | MM-R12 | POST | /api/General/GetCandsOnPlan?startDate={YYYY-MM-DD}&endDate={YYYY-MM-DD} | Kiểm tra batch candidate đang on-plan | ACTIVE |
-| MM-R13 | GET | /api/General/GetClassAndCodes/3 | Lấy skill master data | ACTIVE |
-| MM-W01 | POST | /api/Candidates/RegisterCandidate | Register candidate standard/Permanent | ACTIVE |
 | MM-W02 | PUT | /api/Candidates/UpdateCandidateMain | Cập nhật profile hoặc mark Live | ACTIVE |
 | MM-W03 | PUT | /api/Candidates/UpdatePaymentDetails | Cập nhật payment và NI | ACTIVE |
 | MM-W04 | POST | /api/Candidates/UpdateBankDetails | Cập nhật bank details trực tiếp | ACTIVE |
@@ -44,21 +57,69 @@ các section tương ứng bên dưới.
 | MM-W11 | POST | /api/Candidates/AddCandidateCareer | Thêm career | ACTIVE |
 | MM-W12 | DELETE | /api/Candidates/DeleteCandidateEducation?edu_no={edu_no} | Xóa education | ACTIVE |
 | MM-W13 | POST | /api/Candidates/AddCandidateEducation | Thêm education | ACTIVE |
-| MM-F01 | POST | /api/Candidates/SavePictureString/{peo_no} | Upload profile picture standard | ACTIVE |
 | MM-F02 | POST | /api/Onboarding/SavePictureString/{peo_no} | Upload profile picture existing/duplicate | ACTIVE |
-| MM-F03 | POST | /api/Compliance/UploadAnswer/{peo_no}?chk_no=1 | Gửi RTW answer standard | ACTIVE |
 | MM-F04 | POST | /api/Onboarding/UploadAnswer/{peo_no}?chk_no=1 | Gửi RTW answer existing/duplicate | ACTIVE |
-| MM-F05 | POST | /api/Compliance/UploadAttachment/{peo_no}?chk_no=1 | Upload RTW certificate standard | ACTIVE |
 | MM-F06 | POST | /api/Onboarding/UploadAttachment/{peo_no}?chk_no=1 | Upload RTW certificate existing/duplicate | ACTIVE |
-| MM-F07 | POST | /api/Candidates/AddToContactLog?peo_no={peo_no} | Tạo contact log standard | ACTIVE |
 | MM-F08 | POST | /api/Onboarding/AddToContactLog?peo_no={peo_no} | Tạo contact log existing/Permanent/compliance | ACTIVE |
 | MM-F09 | POST | /api/Candidates/UploadAttachment | Gắn file vào contact log | ACTIVE |
-| MM-F10 | POST | /api/Candidates/UploadAppPack/{peo_no} | Upload application pack standard | ACTIVE |
 | MM-D01 | GET | /api/Candidates/GetPenPicture | Đọc pen picture | RESERVED — chưa có caller |
 | MM-D02 | GET | /api/Candidates/GetContactLogAttachments?logNo={log_no} | Lấy contact-log attachments | RESERVED — chưa có caller |
 | MM-D03 | POST | /api/Accounts/CandidateLoginPost?platform=Epsilon | Candidate authentication | RESERVED — chưa có caller |
 | MM-D04 | POST | /api/Accounts/ClientLoginPost?platform=Epsilon | Client authentication | RESERVED — chưa có caller |
 | MM-D05 | POST | /api/Onboarding/UploadAppPack/{peo_no} | Upload App Pack vào contact log đầu tiên | RESERVED — chưa có caller |
+
+### 1.2. Bespoke / non-Epsilon
+
+Đây là các call path không đi qua `EpsilonApi`. Nhóm này gồm các endpoint
+standard legacy được gọi trực tiếp trong `MatchMakerService` và skill master
+data được gọi qua `BespokeMatchMaker`.
+
+| ID | Method | Path | Mục đích | Trạng thái |
+|---|---|---|---|---|
+| MM-R04 | GET | /api/Candidates/CheckForDuplicate?peo_email={email}&peo_forename={forename}&peo_surname={surname}&peo_other_tel={tel}&peo_postcode={postcode} | Kiểm tra duplicate trước khi register | ACTIVE |
+| MM-R13 | GET | /api/General/GetClassAndCodes/3 | Lấy skill master data | ACTIVE |
+| MM-W01 | POST | /api/Candidates/RegisterCandidate | Register candidate standard/Permanent | ACTIVE |
+| MM-F01 | POST | /api/Candidates/SavePictureString/{peo_no} | Upload profile picture standard | ACTIVE |
+| MM-F03 | POST | /api/Compliance/UploadAnswer/{peo_no}?chk_no=1 | Gửi RTW answer standard | ACTIVE |
+| MM-F05 | POST | /api/Compliance/UploadAttachment/{peo_no}?chk_no=1 | Upload RTW certificate standard | ACTIVE |
+| MM-F07 | POST | /api/Candidates/AddToContactLog?peo_no={peo_no} | Tạo contact log standard | ACTIVE |
+| MM-F10 | POST | /api/Candidates/UploadAppPack/{peo_no} | Upload application pack standard | ACTIVE |
+
+## 1.3. Đối chiếu với Epsilon Swagger 2.0.1.0
+
+Swagger chính thức là nguồn tham chiếu cho route và model của Epsilon. Các path
+Bespoke/non-Epsilon bên dưới là path CRS đang gọi trực tiếp và không được xem là
+Epsilon endpoint chỉ vì chúng dùng cùng MatchMaker host.
+
+| CRS ID | Phân loại CRS | Path CRS hiện tại | Path trong Epsilon Swagger | Kết quả đối chiếu |
+|---|---|---|---|---|
+| MM-R01–R03 | Epsilon | `/api/Accounts/GetAccessToken`, `/api/General/Ping`, `/api/Onboarding/CheckForDuplicate` | Có cùng path | MM-R03 trong Swagger cho phép các query duplicate tùy chọn; CRS hiện chỉ gửi `peo_no` và tự xử lý `409`/`ProfileExists`. |
+| MM-R05–R12 | Epsilon | Candidate reads, status, marketing và on-plan | Có cùng path | Route tồn tại trong Swagger; các model chính thức dùng nhiều ID kiểu integer. |
+| MM-R13 | Bespoke / non-Epsilon | `/api/General/GetClassAndCodes/3` | `/api/General/GetClassAndCodes/{id}` | Cùng endpoint family; CRS Bespoke hardcode class ID `3`, Swagger công bố `id` integer trên path. |
+| MM-W01 | Bespoke / non-Epsilon | `/api/Candidates/RegisterCandidate` | `/api/Onboarding/RegisterCandidate` | Đây là hai route khác nhau. Epsilon route dùng `RegUploadModelV12` và trả `UploadResponse`; route CRS hiện tại là Bespoke. |
+| MM-W02–W13 | Epsilon | Candidate update/history routes | Có cùng path | Route và operation đều được công bố trong Swagger. |
+| MM-F01 | Bespoke / non-Epsilon | `/api/Candidates/SavePictureString/{peo_no}` | `/api/Candidates/SavePictureString` | CRS path có path parameter; Epsilon Swagger dùng body `PeoPictureModel`. |
+| MM-F02, F04, F06 | Epsilon | `/api/Onboarding/{SavePictureString,UploadAnswer,UploadAttachment}/{peo_no}` | Có cùng route family với `{id}` | Swagger khai báo `{id}` là integer và `chk_no` là integer. |
+| MM-F03, F05 | Bespoke / non-Epsilon | `/api/Compliance/Upload{Answer,Attachment}/{peo_no}` | Không có `/api/Compliance/*` tương ứng trong discovery document | Giữ là Bespoke; không gắn nhãn Epsilon. |
+| MM-F07 | Bespoke / non-Epsilon | `/api/Candidates/AddToContactLog` | `/api/Candidates/AddContactLog` | Tên route khác nhau; Swagger không công bố `AddToContactLog`. |
+| MM-F08 | Epsilon | `/api/Onboarding/AddToContactLog` | Có cùng path | Swagger dùng query `peo_no` và body `ContactLogCandidateCreationModel`. |
+| MM-F09 | Epsilon adapter, path cần xác minh | `/api/Candidates/UploadAttachment` | `/api/Candidates/UploadAttachment/{id}` | Epsilon Swagger yêu cầu `{id}` và form field `File`; current CRS call dùng `AttachRef`/`AttachType` headers và path không có `{id}`. |
+| MM-F10 | Bespoke / non-Epsilon | `/api/Candidates/UploadAppPack/{peo_no}` | `/api/Onboarding/UploadAppPack/{id}` | Route CRS hiện tại khác route Epsilon chính thức. |
+| MM-D01–D02 | Epsilon | Candidate pen picture/contact-log attachment reads | Có cùng path | Reserved trong CRS nhưng được công bố trong Swagger. |
+| MM-D03–D04 | Epsilon adapter, route legacy | `CandidateLoginPost` / `ClientLoginPost` với `platform=Epsilon` | `/api/Accounts/CandidateLogin` / `/api/Accounts/ClientLogin` | Swagger dùng operation/path mới và model login riêng; path `*LoginPost` hiện chỉ còn constant/private method trong CRS. |
+| MM-D05 | Epsilon, reserved | `/api/Onboarding/UploadAppPack/{peo_no}` | `/api/Onboarding/UploadAppPack/{id}` | Route tồn tại trong Swagger, nhưng CRS hiện không gọi method này; `EpsilonApi::uploadAppPack()` dùng contact log + attachment. |
+
+### Official source notes
+
+- Swagger `2.0.1.0` công bố security definitions `basic` và header `apiKey`.
+  Các header `MasterUserAuth`, `CliUserAuth` và `CanUserAuth` là behavior của
+  CRS adapter hiện tại, không được xác nhận bởi discovery document.
+- Swagger công bố `UserToken` gồm `usr_token` và `usr_token_expiry`; `UploadResponse`
+  gồm `peo_no` và `status`. CRS có thể chỉ đọc một phần response nên contract
+  runtime bên dưới vẫn ghi rõ phần body mà source thực sự dùng.
+- Official Epsilon có route `/api/Onboarding/RegisterCandidate`; không được
+  đổi `MM-W01` sang route này khi mô tả Bespoke call hiện tại. Hai route phải
+  tiếp tục được ghi riêng để tránh gửi request CRS hiện tại vào nhầm endpoint.
 
 ## 2. Quy ước chung
 
@@ -66,8 +127,10 @@ các section tương ứng bên dưới.
 
 Các path trong tài liệu là path tương đối:
 
-- GAP source: base URL của MatchMaker database GAP.
-- GAP_EAST source: base URL của MatchMaker database GAP_EAST.
+- Với **Epsilon**, `GAP` và `GAP_EAST` lần lượt dùng
+  `matchmaker.epsilon.api_url_gap` và `matchmaker.epsilon.api_url_gap_east`.
+- Với **Bespoke / non-Epsilon**, `GAP` và `GAP_EAST` dùng API setting tương ứng
+  trong `matchmaker.api_setting.*`.
 
 ### 2.2. Authentication và headers
 
@@ -144,12 +207,14 @@ Cấp master token cho CRS gọi các endpoint Epsilon.
 
 ~~~json
 {
-  "usr_token": "string"
+  "usr_token": "string",
+  "usr_token_expiry": "datetime"
 }
 ~~~
 
 - usr_token: string, required.
-- Các field khác nếu có sẽ không được CRS sử dụng.
+- usr_token_expiry: date-time, được Epsilon Swagger công bố; CRS hiện chỉ cache
+  usr_token.
 
 **Lỗi**
 
@@ -187,9 +252,13 @@ Query:
 
 | Field | Type | Required |
 |---|---|---|
-| peo_no | string | yes |
+| peo_no | integer theo Epsilon Swagger; string trên wire hiện tại | yes trong CRS flow |
 
 Body: none.
+
+Epsilon Swagger công bố thêm các query `peo_email`, `peo_forename`,
+`peo_surname`, `peo_tel` và `peo_postcode`, đều optional. CRS hiện chỉ gửi
+`peo_no` từ flow này.
 
 **Success / duplicate response**
 
@@ -380,14 +449,15 @@ Body: none.
 ~~~json
 [
   {
-    "Id": "string",
+    "Id": 123,
     "Value": "string"
   }
 ]
 ~~~
 
 - Response root: array<object>.
-- Id: peo_no, expected string.
+- Id: peo_no, Epsilon Swagger khai báo integer; parser CRS hiện không enforce
+  kiểu external.
 - Value: raw MatchMaker status, expected string.
 
 ### MM-R10 — GET /api/General/GetMarketingUpdates
@@ -411,13 +481,14 @@ Body: none.
 ~~~json
 [
   {
-    "Id": "string",
+    "Id": 123,
     "Value": true
   }
 ]
 ~~~
 
-- Id: peo_no, expected string.
+- Id: peo_no, Epsilon Swagger khai báo integer; parser CRS hiện không enforce
+  kiểu external.
 - Value: boolean hoặc string boolean; CRS normalize bằng boolean parser.
 
 ### MM-R11 — GET /api/General/GetCandsOnPlan
@@ -441,14 +512,15 @@ Body: none.
 ~~~json
 [
   {
-    "Id": "string",
-    "Value": "unknown"
+    "Id": 123,
+    "Value": "string"
   }
 ]
 ~~~
 
 - Response root: array<object>.
-- Id: peo_no, expected string.
+- Id: peo_no, Epsilon Swagger khai báo integer; parser CRS hiện không enforce
+  kiểu external.
 - Value: CRS hiện không dùng; type unknown.
 
 ### MM-R12 — POST /api/General/GetCandsOnPlan
@@ -471,9 +543,13 @@ là peo_no.
 
 ~~~json
 [
-  "string"
+  123
 ]
 ~~~
+
+Epsilon Swagger mô tả request list là các integer `peo_no` (tham số body có tên
+`idArr`). CRS inventory vẫn giữ query `startDate`/`endDate` và shape request mà
+caller hiện tại gửi.
 
 **Success response — HTTP 200**
 
@@ -481,11 +557,12 @@ JSON array các peo_no đang on-plan:
 
 ~~~json
 [
-  "string"
+  123
 ]
 ~~~
 
-Response element type được CRS trả nguyên từ MM và chưa validate.
+Epsilon Swagger khai báo response là array integer; CRS hiện trả nguyên body từ
+MM và chưa validate.
 
 ### MM-R13 — GET /api/General/GetClassAndCodes/3
 
@@ -498,6 +575,9 @@ Lấy skill master data để CRS tạo skill list và dictionary.
 - Authentication: Basic Auth.
 - Query: none.
 - Body: none.
+
+Bản Bespoke hiện tại cố định class ID `3`. Epsilon Swagger công bố route tương
+ứng là `/api/General/GetClassAndCodes/{id}`, với `id` kiểu integer.
 
 **Success response — HTTP 200**
 
@@ -663,6 +743,13 @@ Body schema: unknown. CRS map status này thành DUPLICATED.
 **Validation/server error**
 
 HTTP 400 hoặc status khác ngoài 200/409. Body schema unknown đối với CRS.
+
+**Đối chiếu Epsilon**
+
+Epsilon có route riêng `/api/Onboarding/RegisterCandidate` với request
+`RegUploadModelV12` và response `UploadResponse` gồm `peo_no` integer cùng
+`status` (`CREATED` hoặc `UPDATED`). Mục này vẫn mô tả route Bespoke hiện tại
+`/api/Candidates/RegisterCandidate`.
 
 ### MM-W02 — PUT /api/Candidates/UpdateCandidateMain
 
@@ -949,6 +1036,10 @@ object
   peo_string: string base64
 ~~~
 
+Đây là route Bespoke của CRS. Epsilon Swagger dùng
+`/api/Candidates/SavePictureString` không có path parameter và nhận
+`PeoPictureModel` trong body.
+
 **Success response**
 
 HTTP 200. Body ignored by CRS.
@@ -1006,6 +1097,9 @@ object
 
 HTTP 200. Body ignored by CRS.
 
+Epsilon Swagger không công bố route `/api/Compliance/UploadAnswer`; route
+Epsilon tương ứng cho flow onboarding là `/api/Onboarding/UploadAnswer/{id}`.
+
 ### MM-F04 — POST /api/Onboarding/UploadAnswer/{peo_no}
 
 **Mục đích**
@@ -1047,6 +1141,9 @@ Filename được gửi cùng multipart part.
 **Success response**
 
 HTTP 200. Body ignored by CRS.
+
+Epsilon Swagger không công bố route `/api/Compliance/UploadAttachment`; route
+Epsilon tương ứng cho flow onboarding là `/api/Onboarding/UploadAttachment/{id}`.
 
 ### MM-F06 — POST /api/Onboarding/UploadAttachment/{peo_no}
 
@@ -1098,6 +1195,10 @@ object
 **Success response**
 
 HTTP 200. Body ignored by CRS.
+
+Epsilon Swagger dùng `/api/Candidates/AddContactLog`, với request model có các
+field log bắt buộc và các ID `cli_no`, `job_no`, `peo_no` tùy chọn. CRS hiện gọi
+route Bespoke `/api/Candidates/AddToContactLog`.
 
 ### MM-F08 — POST /api/Onboarding/AddToContactLog
 
@@ -1151,6 +1252,10 @@ Multipart body:
 attachmentName là tên part động; trong các call hiện tại thường là file hoặc
 tên file.
 
+Epsilon Swagger công bố route `/api/Candidates/UploadAttachment/{id}` với path
+`id` kiểu integer và multipart field bắt buộc tên `File`. CRS adapter hiện vẫn
+gọi path không có `{id}` và truyền `AttachRef`/`AttachType` trong header.
+
 **Success response**
 
 HTTP 2xx. Body ignored by CRS.
@@ -1174,6 +1279,10 @@ Multipart body:
 **Success response**
 
 HTTP 200. Body ignored by CRS.
+
+Epsilon Swagger công bố application-pack route là
+`/api/Onboarding/UploadAppPack/{id}`. Mục này giữ route Bespoke hiện tại
+`/api/Candidates/UploadAppPack/{peo_no}`.
 
 ## 6. Endpoint được định nghĩa nhưng chưa có integration caller hiện tại
 
@@ -1244,10 +1353,20 @@ object
 
 ~~~text
 object
-  peo_no: unknown
+  peo_no: integer
+  peo_forename: string
+  peo_surname: string
+  peo_email: string
+  peo_con: string
+  cli_no: integer
   usr_token: string
+  usr_status: string
   usr_token_expiry: string datetime
 ~~~
+
+Epsilon Swagger dùng route `/api/Accounts/CandidateLogin` và request có thêm
+`device`, `remember_me` và `ip_address`. `CandidateLoginPost` là route legacy
+được CRS giữ trong reserved inventory.
 
 **Integration status**
 
@@ -1273,9 +1392,24 @@ object
 
 ~~~text
 object
-  peo_no: unknown
+  peo_no: integer
+  peo_forename: string
+  peo_surname: string
+  peo_email: string
+  peo_con: string
+  cli_no: integer
   usr_token: string
+  usr_status: string
+  usr_token_expiry: string datetime
+  usr_admin: boolean
+  usr_admin_grp: boolean
+  usr_multi_tssheet: boolean
+  usr_allowreports: boolean
 ~~~
+
+Epsilon Swagger dùng route `/api/Accounts/ClientLogin` và request có thêm
+`device`, `remember_me` và `ip_address`. `ClientLoginPost` là route legacy được
+CRS giữ trong reserved inventory.
 
 **Integration status**
 
@@ -1289,9 +1423,13 @@ Upload App Pack vào contact log đầu tiên.
 
 **Request**
 
-- Path peo_no: string.
-- Body: unknown; không có caller hiện tại để xác định payload.
-- Response: unknown.
+- Path `peo_no`: string trong inventory CRS; Epsilon Swagger khai báo `{id}` là
+  integer.
+- Body: multipart bắt buộc; Epsilon Swagger công bố response `HttpResponseMessage`
+  với các status 200, 400 và 415.
+
+Route chính thức là `/api/Onboarding/UploadAppPack/{id}`. CRS hiện chưa có
+caller cho method reserved này.
 
 **Integration status**
 

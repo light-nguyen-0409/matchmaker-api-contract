@@ -1,12 +1,30 @@
 # MatchMaker API Contract
 
-Static OpenAPI contract and Swagger UI for CRS integration with MatchMaker/Epsilon.
+> **API contract online:** [https://light-nguyen-0409.github.io/matchmaker-api-contract/](https://light-nguyen-0409.github.io/matchmaker-api-contract/)
+
+Static OpenAPI contract and Swagger UI for CRS integration with both
+MatchMaker/Epsilon and Bespoke/non-Epsilon calls.
+
+The contract has two adapter groups:
+
+- **Epsilon** — calls made through `App\Externals\EpsilonApi`.
+- **Bespoke / non-Epsilon** — calls made directly by the CRS Bespoke/legacy
+  integration path.
+
+The Epsilon source used for the current verification is the official
+[Swagger UI](https://support.matchmakersoftware.com:31006/help/index#) and its
+[discovery document](https://support.matchmakersoftware.com:31006/docs/2.0.1.0/swagger),
+version `2.0.1.0` (274 published paths, checked 2026-10-06).
 
 ## Files
 
 - openapi.yaml — OpenAPI 3.0.3 contract.
 - index.html — static Swagger UI entry point.
 - .github/workflows/deploy-pages.yml — GitHub Pages deployment.
+
+The contract is intentionally scoped to the CRS integration inventory. It
+keeps Epsilon calls separate from Bespoke/non-Epsilon calls made by the CRS
+codebase; it is not a complete mirror of all 274 Epsilon paths.
 
 ## Local preview
 

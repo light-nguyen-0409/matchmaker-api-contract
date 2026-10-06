@@ -1,25 +1,48 @@
 openapi: 3.0.3
 info:
   title: MatchMaker API Contract for CRS Integration
-  version: 0.1.0
+  version: 0.2.0
   description: |
-    API contract used by CRS to integrate with MatchMaker/Epsilon.
+    API contract used by CRS to integrate with MatchMaker/Epsilon. The
+    inventory is split between calls made through EpsilonApi and calls made by
+    the Bespoke/non-Epsilon direct integration path.
     This specification is derived from the current CRS integration and requires
     MatchMaker validation before being treated as the official external contract.
+    The official Epsilon Swagger source is version 2.0.1.0 and publishes 274
+    paths; this file intentionally covers the CRS integration inventory rather
+    than mirroring the complete Epsilon catalog.
     CRS always uses Basic authentication and may additionally send one or more
     conditional user-auth headers when the corresponding token is available.
   contact:
     name: CRS / MatchMaker integration team
   license:
     name: Internal integration contract
+  x-official-epsilon-source:
+    swagger_ui: https://support.matchmakersoftware.com:31006/help/index#
+    discovery_document: https://support.matchmakersoftware.com:31006/docs/2.0.1.0/swagger
+    swagger_version: 2.0.1.0
+    path_count: 274
+    checked_at: '2026-10-06'
+  x-crs-adapter-split:
+    Epsilon:
+      implementation: App\Externals\EpsilonApi
+      binding: App\Contracts\Externals\MatchMakerApiInterface
+      endpoint_ids: [MM-R01, MM-R02, MM-R03, MM-R05, MM-R06, MM-R07, MM-R08, MM-R09, MM-R10, MM-R11, MM-R12, MM-W02, MM-W03, MM-W04, MM-W05, MM-W06, MM-W07, MM-W08, MM-W09, MM-W10, MM-W11, MM-W12, MM-W13, MM-F02, MM-F04, MM-F06, MM-F08, MM-F09, MM-D01, MM-D02, MM-D03, MM-D04, MM-D05]
+    Bespoke / non-Epsilon:
+      implementation: MatchMakerService direct Guzzle and App\Externals\BespokeMatchMaker
+      endpoint_ids: [MM-R04, MM-R13, MM-W01, MM-F01, MM-F03, MM-F05, MM-F07, MM-F10]
 servers:
   - url: https://{host}
     description: MatchMaker environment host
     variables:
       host:
-        default: matchmaker.example.invalid
-        description: Replace with the GAP or GAP_EAST MatchMaker host.
+        default: support.matchmakersoftware.com:31006
+        description: Official MatchMaker/Epsilon host over HTTPS; replace for another GAP environment.
 tags:
+  - name: Epsilon
+    description: Calls made through the Epsilon adapter or reserved Epsilon methods.
+  - name: Bespoke / non-Epsilon
+    description: Calls made directly by the CRS Bespoke/legacy integration path.
   - name: Authentication
     description: Authentication and token endpoints.
   - name: Health
@@ -45,7 +68,7 @@ security:
 paths:
   /api/Accounts/GetAccessToken:
     get:
-      tags: [Authentication]
+      tags: [Epsilon, Authentication]
       summary: Get the Epsilon master token
       operationId: getAccessToken
       x-crs-integration-status: active
@@ -62,7 +85,7 @@ paths:
 
   /api/General/Ping:
     get:
-      tags: [Health]
+      tags: [Epsilon, Health]
       summary: Check MatchMaker availability
       operationId: ping
       x-crs-integration-status: active
@@ -74,7 +97,7 @@ paths:
 
   /api/Onboarding/CheckForDuplicate:
     get:
-      tags: [Candidate read]
+      tags: [Epsilon, Candidate read]
       summary: Check an existing candidate by peo_no
       operationId: checkDuplicateByPeoNo
       x-crs-integration-status: active
@@ -101,10 +124,12 @@ paths:
 
   /api/Candidates/CheckForDuplicate:
     get:
-      tags: [Candidate read]
+      tags: ['Bespoke / non-Epsilon', Candidate read]
       summary: Check duplicate candidate data
       operationId: checkDuplicateCandidate
       x-crs-integration-status: active
+      x-crs-adapter: 'Bespoke / non-Epsilon'
+      x-official-epsilon-path: null
       parameters:
         - name: peo_email
           in: query
@@ -139,7 +164,7 @@ paths:
 
   /api/Candidates/GetDetails:
     get:
-      tags: [Candidate read]
+      tags: [Epsilon, Candidate read]
       summary: Get candidate details
       operationId: getCandidateDetails
       x-crs-integration-status: active
@@ -156,7 +181,7 @@ paths:
 
   /api/Candidates/GetPicture:
     get:
-      tags: [Candidate read]
+      tags: [Epsilon, Candidate read]
       summary: Get a candidate profile picture
       operationId: getCandidatePicture
       x-crs-integration-status: active
@@ -174,7 +199,7 @@ paths:
 
   /api/Candidates/GetCareer:
     get:
-      tags: [Candidate read]
+      tags: [Epsilon, Candidate read]
       summary: Get candidate career history
       operationId: getCandidateCareer
       x-crs-integration-status: active
@@ -190,7 +215,7 @@ paths:
 
   /api/Candidates/GetEducation:
     get:
-      tags: [Candidate read]
+      tags: [Epsilon, Candidate read]
       summary: Get candidate education history
       operationId: getCandidateEducation
       x-crs-integration-status: active
@@ -208,7 +233,7 @@ paths:
 
   /api/Candidates/GetCandidatesByStatusDate:
     get:
-      tags: [Candidate read]
+      tags: [Epsilon, Candidate read]
       summary: Get candidate status changes by date
       operationId: getCandidatesByStatusDate
       x-crs-integration-status: active
@@ -232,7 +257,7 @@ paths:
 
   /api/General/GetMarketingUpdates:
     get:
-      tags: [Candidate read]
+      tags: [Epsilon, Candidate read]
       summary: Get marketing preference updates
       operationId: getMarketingUpdates
       x-crs-integration-status: active
@@ -256,7 +281,7 @@ paths:
 
   /api/General/GetCandsOnPlan:
     get:
-      tags: [Candidate read]
+      tags: [Epsilon, Candidate read]
       summary: Get candidates on plan by start date
       operationId: getCandidatesOnPlan
       x-crs-integration-status: active
@@ -278,7 +303,7 @@ paths:
         default:
           $ref: '#/components/responses/Error'
     post:
-      tags: [Candidate read]
+      tags: [Epsilon, Candidate read]
       summary: Filter a batch of candidates by on-plan status
       operationId: filterCandidatesOnPlan
       x-crs-integration-status: active
@@ -311,10 +336,12 @@ paths:
 
   /api/General/GetClassAndCodes/3:
     get:
-      tags: [Candidate read]
+      tags: ['Bespoke / non-Epsilon', Candidate read]
       summary: Get skill master data
       operationId: getSkillMasterData
       x-crs-integration-status: active
+      x-crs-adapter: 'Bespoke / non-Epsilon'
+      x-official-epsilon-path: /api/General/GetClassAndCodes/{id}
       responses:
         '200':
           description: MatchMaker skill master data.
@@ -327,10 +354,12 @@ paths:
 
   /api/Candidates/RegisterCandidate:
     post:
-      tags: [Candidate registration]
+      tags: ['Bespoke / non-Epsilon', Candidate registration]
       summary: Register a standard or Permanent candidate
       operationId: registerCandidate
       x-crs-integration-status: active
+      x-crs-adapter: 'Bespoke / non-Epsilon'
+      x-official-epsilon-path: /api/Onboarding/RegisterCandidate
       requestBody:
         required: true
         content:
@@ -359,7 +388,7 @@ paths:
 
   /api/Candidates/UpdateCandidateMain:
     put:
-      tags: [Candidate update]
+      tags: [Epsilon, Candidate update]
       summary: Update candidate profile or mark candidate Live
       operationId: updateCandidateMain
       x-crs-integration-status: active
@@ -381,7 +410,7 @@ paths:
 
   /api/Candidates/UpdatePaymentDetails:
     put:
-      tags: [Candidate update]
+      tags: [Epsilon, Candidate update]
       summary: Update candidate payment details
       operationId: updatePaymentDetails
       x-crs-integration-status: active
@@ -401,7 +430,7 @@ paths:
 
   /api/Candidates/UpdateBankDetails:
     post:
-      tags: [Candidate update]
+      tags: [Epsilon, Candidate update]
       summary: Update candidate bank details directly
       operationId: updateBankDetails
       x-crs-integration-status: active
@@ -421,7 +450,7 @@ paths:
 
   /api/Candidates/UpdateSource:
     post:
-      tags: [Candidate update]
+      tags: [Epsilon, Candidate update]
       summary: Update candidate recruitment source
       operationId: updateCandidateSource
       x-crs-integration-status: active
@@ -447,7 +476,7 @@ paths:
 
   /api/Candidates/AddCandidateCodes:
     post:
-      tags: [Candidate update]
+      tags: [Epsilon, Candidate update]
       summary: Add candidate skill codes
       operationId: addCandidateCodes
       x-crs-integration-status: active
@@ -467,7 +496,7 @@ paths:
 
   /api/Candidates/SavePenPicture:
     put:
-      tags: [Candidate update]
+      tags: [Epsilon, Candidate update]
       summary: Save candidate pen picture
       operationId: savePenPicture
       x-crs-integration-status: active
@@ -495,7 +524,7 @@ paths:
 
   /api/Candidates/UpdateCandidateStarterDeclaration:
     put:
-      tags: [Candidate update]
+      tags: [Epsilon, Candidate update]
       summary: Update candidate starter declaration
       operationId: updateCandidateStarterDeclaration
       x-crs-integration-status: active
@@ -521,7 +550,7 @@ paths:
 
   /api/Candidates/UpdateCandidateConsultant:
     put:
-      tags: [Candidate update]
+      tags: [Epsilon, Candidate update]
       summary: Update candidate consultant
       operationId: updateCandidateConsultant
       x-crs-integration-status: active
@@ -547,7 +576,7 @@ paths:
 
   /api/Candidates/DeleteCandidateCareer:
     delete:
-      tags: [Candidate update]
+      tags: [Epsilon, Candidate update]
       summary: Delete a candidate career
       operationId: deleteCandidateCareer
       x-crs-integration-status: active
@@ -568,7 +597,7 @@ paths:
 
   /api/Candidates/AddCandidateCareer:
     post:
-      tags: [Candidate update]
+      tags: [Epsilon, Candidate update]
       summary: Add a candidate career
       operationId: addCandidateCareer
       x-crs-integration-status: active
@@ -588,7 +617,7 @@ paths:
 
   /api/Candidates/DeleteCandidateEducation:
     delete:
-      tags: [Candidate update]
+      tags: [Epsilon, Candidate update]
       summary: Delete a candidate education record
       operationId: deleteCandidateEducation
       x-crs-integration-status: active
@@ -609,7 +638,7 @@ paths:
 
   /api/Candidates/AddCandidateEducation:
     post:
-      tags: [Candidate update]
+      tags: [Epsilon, Candidate update]
       summary: Add a candidate education record
       operationId: addCandidateEducation
       x-crs-integration-status: active
@@ -629,10 +658,12 @@ paths:
 
   /api/Candidates/SavePictureString/{peo_no}:
     post:
-      tags: [Compliance and files]
+      tags: ['Bespoke / non-Epsilon', Compliance and files]
       summary: Save a standard candidate profile picture
       operationId: saveStandardCandidatePicture
       x-crs-integration-status: active
+      x-crs-adapter: 'Bespoke / non-Epsilon'
+      x-official-epsilon-path: /api/Candidates/SavePictureString
       parameters:
         - $ref: '#/components/parameters/PeoNoPath'
       requestBody:
@@ -649,7 +680,7 @@ paths:
 
   /api/Onboarding/SavePictureString/{peo_no}:
     post:
-      tags: [Compliance and files]
+      tags: [Epsilon, Compliance and files]
       summary: Save an existing candidate profile picture
       operationId: saveOnboardingCandidatePicture
       x-crs-integration-status: active
@@ -671,10 +702,12 @@ paths:
 
   /api/Compliance/UploadAnswer/{peo_no}:
     post:
-      tags: [Compliance and files]
+      tags: ['Bespoke / non-Epsilon', Compliance and files]
       summary: Upload a standard candidate RTW answer
       operationId: uploadStandardRightToWorkAnswer
       x-crs-integration-status: active
+      x-crs-adapter: 'Bespoke / non-Epsilon'
+      x-official-epsilon-path: null
       parameters:
         - $ref: '#/components/parameters/PeoNoPath'
         - $ref: '#/components/parameters/CheckNumber'
@@ -692,7 +725,7 @@ paths:
 
   /api/Onboarding/UploadAnswer/{peo_no}:
     post:
-      tags: [Compliance and files]
+      tags: [Epsilon, Compliance and files]
       summary: Upload an existing candidate RTW answer
       operationId: uploadOnboardingRightToWorkAnswer
       x-crs-integration-status: active
@@ -715,10 +748,12 @@ paths:
 
   /api/Compliance/UploadAttachment/{peo_no}:
     post:
-      tags: [Compliance and files]
+      tags: ['Bespoke / non-Epsilon', Compliance and files]
       summary: Upload a standard candidate RTW attachment
       operationId: uploadStandardRightToWorkAttachment
       x-crs-integration-status: active
+      x-crs-adapter: 'Bespoke / non-Epsilon'
+      x-official-epsilon-path: null
       parameters:
         - $ref: '#/components/parameters/PeoNoPath'
         - $ref: '#/components/parameters/CheckNumber'
@@ -736,7 +771,7 @@ paths:
 
   /api/Onboarding/UploadAttachment/{peo_no}:
     post:
-      tags: [Compliance and files]
+      tags: [Epsilon, Compliance and files]
       summary: Upload an existing candidate RTW attachment
       operationId: uploadOnboardingRightToWorkAttachment
       x-crs-integration-status: active
@@ -759,10 +794,12 @@ paths:
 
   /api/Candidates/AddToContactLog:
     post:
-      tags: [Compliance and files]
+      tags: ['Bespoke / non-Epsilon', Compliance and files]
       summary: Add a standard candidate contact log
       operationId: addStandardCandidateContactLog
       x-crs-integration-status: active
+      x-crs-adapter: 'Bespoke / non-Epsilon'
+      x-official-epsilon-path: /api/Candidates/AddContactLog
       parameters:
         - $ref: '#/components/parameters/PeoNoQuery'
       requestBody:
@@ -779,7 +816,7 @@ paths:
 
   /api/Onboarding/AddToContactLog:
     post:
-      tags: [Compliance and files]
+      tags: [Epsilon, Compliance and files]
       summary: Add an onboarding contact log
       operationId: addOnboardingContactLog
       x-crs-integration-status: active
@@ -805,10 +842,12 @@ paths:
 
   /api/Candidates/UploadAttachment:
     post:
-      tags: [Compliance and files]
+      tags: [Epsilon, Compliance and files]
       summary: Attach a file to a contact log
       operationId: uploadContactLogAttachment
       x-crs-integration-status: active
+      x-crs-adapter: Epsilon
+      x-official-epsilon-path: /api/Candidates/UploadAttachment/{id}
       parameters:
         - name: AttachRef
           in: header
@@ -843,10 +882,12 @@ paths:
 
   /api/Candidates/UploadAppPack/{peo_no}:
     post:
-      tags: [Compliance and files]
+      tags: ['Bespoke / non-Epsilon', Compliance and files]
       summary: Upload a standard candidate application pack
       operationId: uploadStandardApplicationPack
       x-crs-integration-status: active
+      x-crs-adapter: 'Bespoke / non-Epsilon'
+      x-official-epsilon-path: /api/Onboarding/UploadAppPack/{id}
       parameters:
         - $ref: '#/components/parameters/PeoNoPath'
       requestBody:
@@ -863,7 +904,7 @@ paths:
 
   /api/Candidates/GetPenPicture:
     get:
-      tags: [Reserved]
+      tags: [Epsilon, Reserved]
       summary: Get a candidate pen picture
       operationId: getCandidatePenPicture
       deprecated: true
@@ -881,7 +922,7 @@ paths:
 
   /api/Candidates/GetContactLogAttachments:
     get:
-      tags: [Reserved]
+      tags: [Epsilon, Reserved]
       summary: Get contact log attachments
       operationId: getContactLogAttachments
       deprecated: true
@@ -904,11 +945,13 @@ paths:
 
   /api/Accounts/CandidateLoginPost:
     post:
-      tags: [Reserved]
+      tags: [Epsilon, Reserved]
       summary: Candidate login
       operationId: candidateLogin
       deprecated: true
       x-crs-integration-status: reserved
+      x-crs-adapter: Epsilon
+      x-official-epsilon-path: /api/Accounts/CandidateLogin
       parameters:
         - $ref: '#/components/parameters/EpsilonPlatform'
       requestBody:
@@ -929,11 +972,13 @@ paths:
 
   /api/Accounts/ClientLoginPost:
     post:
-      tags: [Reserved]
+      tags: [Epsilon, Reserved]
       summary: Client login
       operationId: clientLogin
       deprecated: true
       x-crs-integration-status: reserved
+      x-crs-adapter: Epsilon
+      x-official-epsilon-path: /api/Accounts/ClientLogin
       parameters:
         - $ref: '#/components/parameters/EpsilonPlatform'
       requestBody:
@@ -954,11 +999,13 @@ paths:
 
   /api/Onboarding/UploadAppPack/{peo_no}:
     post:
-      tags: [Reserved]
+      tags: [Epsilon, Reserved]
       summary: Upload an application pack to the first contact log
       operationId: uploadReservedOnboardingApplicationPack
       deprecated: true
       x-crs-integration-status: reserved
+      x-crs-adapter: Epsilon
+      x-official-epsilon-path: /api/Onboarding/UploadAppPack/{id}
       description: The current CRS implementation uses AddToContactLog plus UploadAttachment instead.
       parameters:
         - $ref: '#/components/parameters/PeoNoPath'
@@ -979,6 +1026,11 @@ components:
     basicAuth:
       type: http
       scheme: basic
+    epsilonApiKey:
+      type: apiKey
+      in: header
+      name: apiKey
+      description: Published by the official Epsilon Swagger; not sent by the current CRS adapter.
     masterUserAuth:
       type: apiKey
       in: header
@@ -1072,6 +1124,10 @@ components:
       properties:
         usr_token:
           type: string
+        usr_token_expiry:
+          type: string
+          format: date-time
+          description: Published by Epsilon UserToken; CRS currently caches usr_token.
     RegisterCandidateResponse:
       type: object
       required: [peo_no]
@@ -1125,12 +1181,12 @@ components:
     StatusChange:
       type: object
       properties:
-        Id: { type: string }
+        Id: { type: integer, format: int32 }
         Value: { type: string }
     MarketingUpdate:
       type: object
       properties:
-        Id: { type: string }
+        Id: { type: integer, format: int32 }
         Value:
           oneOf:
             - type: boolean
@@ -1138,11 +1194,15 @@ components:
     OnPlanItem:
       type: object
       properties:
-        Id: { type: string }
-        Value: {}
+        Id: { type: integer, format: int32 }
+        Value: { type: string }
     SkillMasterData:
       type: object
       properties:
+        class_no: { type: integer, format: int32 }
+        class_name: { type: string }
+        class_webpeo: { type: boolean }
+        class_webjob: { type: boolean }
         sub_categories:
           type: array
           items:
@@ -1414,6 +1474,7 @@ components:
         peo_bool: { type: boolean }
         peo_text: { type: string }
         peo_other: { type: string }
+        peo_memo: { type: string }
         peo_expiry_date: { type: string, format: date-time }
         peo_issue_date: { type: string, format: date-time }
     ContactLogRequest:
@@ -1436,14 +1497,37 @@ components:
       properties:
         username: { type: string }
         password: { type: string, format: password }
+        ip_address: { type: string }
+        remember_me:
+          type: boolean
+          description: Candidate login option published by Epsilon; defaults to false.
+        device:
+          $ref: '#/components/schemas/UnknownObject'
     CandidateLoginResponse:
       type: object
       properties:
-        peo_no: {}
+        peo_no: { type: integer, format: int32 }
+        peo_forename: { type: string }
+        peo_surname: { type: string }
+        peo_email: { type: string }
+        peo_con: { type: string }
+        cli_no: { type: integer, format: int32 }
         usr_token: { type: string }
-        usr_token_expiry: { type: string }
+        usr_status: { type: string }
+        usr_token_expiry: { type: string, format: date-time }
     ClientLoginResponse:
       type: object
       properties:
-        peo_no: {}
+        peo_no: { type: integer, format: int32 }
+        peo_forename: { type: string }
+        peo_surname: { type: string }
+        peo_email: { type: string }
+        peo_con: { type: string }
+        cli_no: { type: integer, format: int32 }
         usr_token: { type: string }
+        usr_status: { type: string }
+        usr_token_expiry: { type: string, format: date-time }
+        usr_admin: { type: boolean }
+        usr_admin_grp: { type: boolean }
+        usr_multi_tssheet: { type: boolean }
+        usr_allowreports: { type: boolean }
