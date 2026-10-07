@@ -60,12 +60,18 @@
       .load-error {
         color: #b42318;
       }
+
+      .view-title {
+        margin: 24px 20px 0;
+        color: #172b4d;
+        font: 700 20px/1.25 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      }
     </style>
   </head>
   <body>
     <header class="site-header">
       <h1>MatchMaker API Contract</h1>
-      <p>Choose an adapter group to view only its API operations.</p>
+      <p>Epsilon shows the full official catalog and CRS adapter routes; Bespoke / non-Epsilon shows the CRS direct integration routes.</p>
       <nav class="adapter-tabs" aria-label="API adapter groups">
         <a class="adapter-tab" href="#epsilon" data-adapter="epsilon" aria-selected="true">
           Epsilon
@@ -80,7 +86,10 @@
       <p id="loading" class="loading">Loading API contract…</p>
       <p id="load-error" class="load-error" hidden></p>
       <section id="epsilon" aria-label="Epsilon API operations">
-        <div id="swagger-ui-epsilon"></div>
+        <h2 class="view-title">Official Epsilon catalog</h2>
+        <div id="swagger-ui-epsilon-official"></div>
+        <h2 class="view-title">CRS Epsilon adapter inventory</h2>
+        <div id="swagger-ui-epsilon-crs"></div>
       </section>
       <section id="bespoke" aria-label="Bespoke API operations" hidden>
         <div id="swagger-ui-bespoke"></div>
@@ -105,7 +114,7 @@
           'patch',
           'trace',
         ]);
-        const renderedAdapters = new Set();
+        const renderedViews = new Set();
         const specs = {};
         window.swaggerViews = {};
 
@@ -184,6 +193,24 @@
           return window.location.hash === '#bespoke' ? 'bespoke' : 'epsilon';
         }
 
+        function renderSwagger(view, spec, domId) {
+          if (!spec || renderedViews.has(view)) {
+            return;
+          }
+
+          window.swaggerViews[view] = SwaggerUIBundle({
+            spec,
+            dom_id: `#${domId}`,
+            deepLinking: true,
+            docExpansion: 'list',
+            defaultModelsExpandDepth: -1,
+            tryItOutEnabled: false,
+            presets: [SwaggerUIBundle.presets.apis],
+            layout: 'BaseLayout',
+          });
+          renderedViews.add(view);
+        }
+
         function setActiveAdapter(adapter) {
           Object.entries(adapterLabels).forEach(([key]) => {
             const tab = document.querySelector(`[data-adapter="${key}"]`);
@@ -194,31 +221,30 @@
             section.hidden = !active;
           });
 
-          if (!specs[adapter] || renderedAdapters.has(adapter)) {
+          if (adapter === 'epsilon') {
+            renderSwagger('epsilon-official', specs.epsilonOfficial, 'swagger-ui-epsilon-official');
+            renderSwagger('epsilon-crs', specs.epsilonCrs, 'swagger-ui-epsilon-crs');
             return;
           }
 
-          window.swaggerViews[adapter] = SwaggerUIBundle({
-            spec: specs[adapter],
-            dom_id: `#swagger-ui-${adapter}`,
-            deepLinking: true,
-            docExpansion: 'list',
-            defaultModelsExpandDepth: -1,
-            tryItOutEnabled: false,
-            presets: [SwaggerUIBundle.presets.apis],
-            layout: 'BaseLayout',
-          });
-          renderedAdapters.add(adapter);
+          renderSwagger(adapter, specs[adapter], `swagger-ui-${adapter}`);
         }
 
         async function loadContract() {
-          const response = await fetch('./openapi.yaml');
-          if (!response.ok) {
-            throw new Error(`Unable to load openapi.yaml (${response.status})`);
+          const [contractResponse, epsilonResponse] = await Promise.all([
+            fetch('./openapi.yaml'),
+            fetch('./epsilon-openapi.json'),
+          ]);
+          if (!contractResponse.ok) {
+            throw new Error(`Unable to load openapi.yaml (${contractResponse.status})`);
+          }
+          if (!epsilonResponse.ok) {
+            throw new Error(`Unable to load epsilon-openapi.json (${epsilonResponse.status})`);
           }
 
-          const source = jsyaml.load(await response.text());
-          specs.epsilon = buildAdapterSpec(source, 'epsilon');
+          const source = jsyaml.load(await contractResponse.text());
+          specs.epsilonOfficial = await epsilonResponse.json();
+          specs.epsilonCrs = buildAdapterSpec(source, 'epsilon');
           specs.bespoke = buildAdapterSpec(source, 'bespoke');
           document.getElementById('loading').hidden = true;
           setActiveAdapter(getInitialAdapter());

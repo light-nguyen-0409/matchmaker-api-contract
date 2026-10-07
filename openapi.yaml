@@ -11,8 +11,10 @@ info:
     The official Epsilon Swagger source is version 2.0.1.0 and publishes 274
     paths; this file intentionally covers the CRS integration inventory rather
     than mirroring the complete Epsilon catalog.
-    CRS always uses Basic authentication and may additionally send one or more
-    conditional user-auth headers when the corresponding token is available.
+    Both adapters use Basic authentication on the wire, but they load credentials
+    from separate configuration namespaces. Epsilon may additionally send one
+    or more conditional user-auth headers when the corresponding token is available;
+    Bespoke/non-Epsilon sends only its own Basic credentials.
   contact:
     name: CRS / MatchMaker integration team
   license:
@@ -22,7 +24,7 @@ info:
     discovery_document: https://support.matchmakersoftware.com:31006/docs/2.0.1.0/swagger
     swagger_version: 2.0.1.0
     path_count: 274
-    checked_at: '2026-10-06'
+    checked_at: '2026-10-07'
   x-crs-adapter-split:
     Epsilon:
       implementation: App\Externals\EpsilonApi
@@ -31,6 +33,21 @@ info:
     Bespoke / non-Epsilon:
       implementation: MatchMakerService direct Guzzle and App\Externals\BespokeMatchMaker
       endpoint_ids: [MM-R04, MM-R13, MM-W01, MM-F01, MM-F03, MM-F05, MM-F07, MM-F10]
+  x-crs-authentication:
+    Epsilon:
+      wire_scheme: Basic
+      credential_sources:
+        GAP: EPSILON_API_USERNAME_GAP / EPSILON_API_PASSWORD_GAP
+        GAP_EAST: EPSILON_API_USERNAME_GAP_EAST / EPSILON_API_PASSWORD_GAP_EAST
+      additional_headers: [MasterUserAuth, CliUserAuth, CanUserAuth]
+    Bespoke / non-Epsilon:
+      wire_scheme: Basic
+      credential_sources:
+        default_and_dfr: MATCHMAKER_DEFAULT_USERNAME / MATCHMAKER_DEFAULT_PASSWORD
+        gap_technical: MATCHMAKER_GAP_TECHNICAL_USERNAME / MATCHMAKER_GAP_TECHNICAL_PASSWORD
+        gap_eu: MATCHMAKER_GAP_EU_USERNAME / MATCHMAKER_GAP_EU_PASSWORD
+        gap_east: MATCHMAKER_GAP_EAST_USERNAME / MATCHMAKER_GAP_EAST_PASSWORD
+      additional_headers: []
 servers:
   - url: https://{host}
     description: MatchMaker environment host
@@ -40,9 +57,9 @@ servers:
         description: Official MatchMaker/Epsilon host over HTTPS; replace for another GAP environment.
 tags:
   - name: Epsilon
-    description: Calls made through the Epsilon adapter or reserved Epsilon methods.
+    description: Calls made through the Epsilon adapter or reserved Epsilon methods. Uses epsilonBasicAuth and may use conditional Epsilon user-auth headers.
   - name: Bespoke / non-Epsilon
-    description: Calls made directly by the CRS Bespoke/legacy integration path.
+    description: Calls made directly by the CRS Bespoke/legacy integration path. Uses bespokeBasicAuth only; it does not use Epsilon user-auth headers.
   - name: Authentication
     description: Authentication and token endpoints.
   - name: Health
@@ -58,12 +75,12 @@ tags:
   - name: Reserved
     description: Defined in CRS but not currently called at runtime.
 security:
-  - basicAuth: []
-  - basicAuth: []
+  - epsilonBasicAuth: []
+  - epsilonBasicAuth: []
     masterUserAuth: []
-  - basicAuth: []
+  - epsilonBasicAuth: []
     clientUserAuth: []
-  - basicAuth: []
+  - epsilonBasicAuth: []
     candidateUserAuth: []
 paths:
   /api/Accounts/GetAccessToken:
@@ -172,6 +189,8 @@ paths:
       operationId: checkDuplicateCandidate
       x-crs-integration-status: active
       x-crs-adapter: 'Bespoke / non-Epsilon'
+      security:
+        - bespokeBasicAuth: []
       x-official-epsilon-path: null
       parameters:
         - name: peo_email
@@ -389,6 +408,8 @@ paths:
       operationId: getSkillMasterData
       x-crs-integration-status: active
       x-crs-adapter: 'Bespoke / non-Epsilon'
+      security:
+        - bespokeBasicAuth: []
       x-official-epsilon-path: /api/General/GetClassAndCodes/{id}
       responses:
         '200':
@@ -407,6 +428,8 @@ paths:
       operationId: registerCandidate
       x-crs-integration-status: active
       x-crs-adapter: 'Bespoke / non-Epsilon'
+      security:
+        - bespokeBasicAuth: []
       x-official-epsilon-path: /api/Onboarding/RegisterCandidate
       x-official-epsilon-request-schema: '#/components/schemas/OfficialRegUploadModelV12'
       x-official-epsilon-response-schema: '#/components/schemas/OfficialUploadResponse'
@@ -719,6 +742,8 @@ paths:
       operationId: saveStandardCandidatePicture
       x-crs-integration-status: active
       x-crs-adapter: 'Bespoke / non-Epsilon'
+      security:
+        - bespokeBasicAuth: []
       x-official-epsilon-path: /api/Candidates/SavePictureString
       x-official-epsilon-request-schema: '#/components/schemas/OfficialPeoPictureModel'
       x-official-epsilon-response-schema: '#/components/schemas/OfficialEpsilonIntegerSuccess'
@@ -767,6 +792,8 @@ paths:
       operationId: uploadStandardRightToWorkAnswer
       x-crs-integration-status: active
       x-crs-adapter: 'Bespoke / non-Epsilon'
+      security:
+        - bespokeBasicAuth: []
       x-official-epsilon-path: null
       parameters:
         - $ref: '#/components/parameters/PeoNoPath'
@@ -815,6 +842,8 @@ paths:
       operationId: uploadStandardRightToWorkAttachment
       x-crs-integration-status: active
       x-crs-adapter: 'Bespoke / non-Epsilon'
+      security:
+        - bespokeBasicAuth: []
       x-official-epsilon-path: null
       parameters:
         - $ref: '#/components/parameters/PeoNoPath'
@@ -867,6 +896,8 @@ paths:
       operationId: addStandardCandidateContactLog
       x-crs-integration-status: active
       x-crs-adapter: 'Bespoke / non-Epsilon'
+      security:
+        - bespokeBasicAuth: []
       x-official-epsilon-path: /api/Candidates/AddContactLog
       x-official-epsilon-request-schema: '#/components/schemas/ContactLogRequest'
       x-official-epsilon-response-schema: '#/components/schemas/OfficialEpsilonIntegerSuccess'
@@ -949,6 +980,8 @@ paths:
       operationId: uploadStandardApplicationPack
       x-crs-integration-status: active
       x-crs-adapter: 'Bespoke / non-Epsilon'
+      security:
+        - bespokeBasicAuth: []
       x-official-epsilon-path: /api/Onboarding/UploadAppPack/{id}
       x-official-epsilon-response-schema: '#/components/schemas/UnknownObject'
       parameters:
@@ -1087,9 +1120,19 @@ paths:
 
 components:
   securitySchemes:
-    basicAuth:
+    epsilonBasicAuth:
       type: http
       scheme: basic
+      description: >-
+        Epsilon Basic credentials. The CRS loads the username/password from
+        matchmaker.epsilon.api_username_gap or api_username_gap_east.
+    bespokeBasicAuth:
+      type: http
+      scheme: basic
+      description: >-
+        Bespoke/non-Epsilon Basic credentials. The CRS selects them from
+        matchmaker.api_setting.* by legal entity; no Epsilon user-auth header
+        is added.
     epsilonApiKey:
       type: apiKey
       in: header

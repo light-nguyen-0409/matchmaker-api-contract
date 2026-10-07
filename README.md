@@ -16,17 +16,21 @@ The contract has two adapter groups:
 The Epsilon source used for the current verification is the official
 [Swagger UI](https://support.matchmakersoftware.com:31006/help/index#) and its
 [discovery document](https://support.matchmakersoftware.com:31006/docs/2.0.1.0/swagger),
-version `2.0.1.0` (274 published paths, checked 2026-10-06).
+version `2.0.1.0` (274 published paths, snapshot checked 2026-10-07).
 
 ## Files
 
 - openapi.yaml — OpenAPI 3.0.3 contract.
+- epsilon-openapi.json — complete official Epsilon Swagger 2.0.1.0 snapshot (274 paths, 275 operations).
+- official-epsilon-api-gap.md — inventory of the 238 official path entries added beyond the previous CRS inventory.
 - index.html — static Swagger UI entry point with separate Epsilon and Bespoke / non-Epsilon views.
 - .github/workflows/deploy-pages.yml — GitHub Pages deployment.
 
-The contract is intentionally scoped to the CRS integration inventory. It
-keeps Epsilon calls separate from Bespoke/non-Epsilon calls made by the CRS
-codebase; it is not a complete mirror of all 274 Epsilon paths.
+`openapi.yaml` remains scoped to the current CRS integration inventory and keeps
+the Epsilon and Bespoke/non-Epsilon adapter metadata together. The hosted
+Epsilon view loads the complete official catalog from `epsilon-openapi.json` and
+keeps a separate CRS Epsilon adapter inventory below it, while the Bespoke view
+shows only the direct CRS routes.
 
 The input/output and datatype audit is recorded in
 [`matchmaker-api-docs.md`](matchmaker-api-docs.md), section 1.4. It includes the
@@ -37,32 +41,36 @@ the official Epsilon Swagger and the current CRS adapter.
 ## Local preview
 
 Serve this directory with any static file server, then open `index.html#epsilon` or
-`index.html#bespoke` to view one adapter group at a time. Both views are derived
-from `openapi.yaml`, so the contract remains in one source file.
+`index.html#bespoke` to view one adapter group at a time. The Epsilon view uses
+the official snapshot plus the current CRS Epsilon adapter inventory; the
+Bespoke view is derived from `openapi.yaml`.
 
 ## GitHub Pages
 
 Enable GitHub Pages with GitHub Actions as the publishing source. Every push to
 main deploys the static Swagger UI.
 
-## Authentication headers
+## Authentication
 
-All requests use Basic authentication. Depending on the CRS adapter state, a
-request may also include one or more conditional token headers:
+Both adapters use Basic authentication on the wire, but they do not share the
+credential source:
 
-| Header | Type | Wire format | Status |
+| Adapter | OpenAPI security scheme | Credential source | Extra headers |
 |---|---|---|---|
-| `Authorization` | string | `Basic ` + base64(`username:password`) | Required |
-| `MasterUserAuth` | string | base64(`peo_no:usr_token`) | Conditional |
-| `CliUserAuth` | string | base64(`peo_no:usr_token`) | Conditional/reserved |
-| `CanUserAuth` | string | base64(`peo_no:usr_token`) | Conditional/reserved |
+| Epsilon | `epsilonBasicAuth` | `EPSILON_API_USERNAME_GAP` / `EPSILON_API_PASSWORD_GAP` or the `GAP_EAST` pair | Conditional `MasterUserAuth`, `CliUserAuth`, `CanUserAuth` |
+| Bespoke / non-Epsilon | `bespokeBasicAuth` | `MATCHMAKER_*_USERNAME` / `MATCHMAKER_*_PASSWORD` selected by `matchmaker.api_setting.*` and legal entity | None |
 
-The custom headers are declared as security schemes in `openapi.yaml`. Their
-requiredness per endpoint must be confirmed by MatchMaker; the current CRS
-implementation does not send all three headers on every call.
+The Epsilon adapter selects `GAP` or `GAP_EAST` credentials from
+`matchmaker.epsilon.*`. Bespoke selects `default`, `gap_technical`, `gap_eu`,
+`gap_east` or `dfr` credentials from `matchmaker.api_setting.*`; it sends only
+its own `Authorization: Basic ...` header. The custom Epsilon token headers are
+not part of Bespoke authentication.
+
+The detailed mapping and wire formats are recorded in
+[`matchmaker-api-docs.md`](matchmaker-api-docs.md), section 2.2. This repository
+must not contain MatchMaker credentials, tokens, or private environment values.
 
 ## Security
 
-This repository must not contain MatchMaker credentials, tokens, or private
-environment values. Try it out is disabled by default because the browser would
-call MatchMaker directly.
+Try it out is disabled by default because the browser would call MatchMaker
+directly.

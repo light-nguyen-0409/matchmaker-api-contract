@@ -10,7 +10,7 @@
 >
 > **Nguồn Epsilon chính thức đã đối chiếu:** [Swagger UI](https://support.matchmakersoftware.com:31006/help/index#)
 > và [discovery document](https://support.matchmakersoftware.com:31006/docs/2.0.1.0/swagger),
-> version `2.0.1.0`, kiểm tra ngày 2026-10-06. Discovery document công bố 274
+> version `2.0.1.0`, kiểm tra ngày 2026-10-07. Discovery document công bố 274
 > paths; tài liệu này vẫn chỉ bao phủ CRS integration inventory và reserved calls.
 >
 > Mỗi endpoint được mô tả theo format: mục đích, request, kiểu dữ liệu,
@@ -198,6 +198,36 @@ Vì vậy, các endpoint status-only vẫn phải có official response type tro
 liệu; cần ghi thêm `CRS ignores response body` để không biến response thành
 `empty` hoặc `unknown`.
 
+## 1.5. Full official Epsilon catalog và API còn thiếu trong CRS inventory
+
+Discovery document chính thức được lưu nguyên bản tại
+[`epsilon-openapi.json`](epsilon-openapi.json). File này là Swagger 2.0.1.0 của
+MatchMaker, gồm 274 path, 275 operation và 174 definition/schema; Swagger view
+Epsilon trên GitHub Pages nạp toàn bộ file này.
+
+`openapi.yaml` vẫn là contract OpenAPI 3.0.3 của các call path CRS. Khi so sánh
+path chính thức với inventory CRS trước khi import:
+
+Swagger view Epsilon hiển thị cả catalog official đầy đủ và inventory riêng của
+`App\Externals\EpsilonApi`, nên các route CRS legacy hoặc route có path khác
+official vẫn không bị mất khỏi tài liệu tích hợp.
+
+| Nhóm official | Official paths | Official operations | Path entries được bổ sung vào catalog đầy đủ |
+|---|---:|---:|---:|
+| Accounts | 14 | 14 | 11 |
+| Candidates | 135 | 135 | 113 |
+| Clients | 73 | 73 | 73 |
+| General | 16 | 17 | 12 |
+| Jobs | 29 | 29 | 29 |
+| Onboarding | 7 | 7 | 0 |
+| **Tổng** | **274** | **275** | **238** |
+
+Danh sách từng method/path và summary của 238 path entries được ghi tại
+[`official-epsilon-api-gap.md`](official-epsilon-api-gap.md). Các path đã có
+trong CRS inventory hoặc đã được tham chiếu qua `x-official-epsilon-path` không
+bị nhân bản vào report gap; toàn bộ request, response và schema của chúng vẫn
+có trong snapshot official.
+
 ## 2. Quy ước chung
 
 ### 2.1. Base URL
@@ -210,6 +240,39 @@ Các path trong tài liệu là path tương đối:
   trong `matchmaker.api_setting.*`.
 
 ### 2.2. Authentication và headers
+
+Cả hai adapter đều gửi `Authorization: Basic ...` trên wire, nhưng credential
+source là hai namespace độc lập. OpenAPI tách chúng thành `epsilonBasicAuth` và
+`bespokeBasicAuth`; Bespoke không dùng các user-auth header của Epsilon.
+
+#### Epsilon
+
+- `GAP`: `matchmaker.epsilon.api_username_gap` và
+  `matchmaker.epsilon.api_password_gap`, lấy từ
+  `EPSILON_API_USERNAME_GAP` / `EPSILON_API_PASSWORD_GAP`.
+- `GAP_EAST`: `matchmaker.epsilon.api_username_gap_east` và
+  `matchmaker.epsilon.api_password_gap_east`, lấy từ cặp biến `GAP_EAST` tương
+  ứng.
+- `App\Externals\EpsilonApi` luôn tạo Basic header bằng credential của Epsilon
+  source hiện tại; khi state có token, adapter có thể thêm
+  `MasterUserAuth`, `CliUserAuth` hoặc `CanUserAuth`.
+
+#### Bespoke / non-Epsilon
+
+`MatchMakerService` và `App\Externals\BespokeMatchMaker` lấy credential qua
+`MatchMakerUtility::getApiSettings($legalEntityId)`, không đọc
+`matchmaker.epsilon.*`:
+
+| `matchmaker.api_setting.*` | Legal entity mapping | Username/password env |
+|---|---|---|
+| `default` | fallback | `MATCHMAKER_DEFAULT_USERNAME` / `MATCHMAKER_DEFAULT_PASSWORD` |
+| `dfr` | `7` | `MATCHMAKER_DEFAULT_USERNAME` / `MATCHMAKER_DEFAULT_PASSWORD` |
+| `gap_technical` | `3` | `MATCHMAKER_GAP_TECHNICAL_USERNAME` / `MATCHMAKER_GAP_TECHNICAL_PASSWORD` |
+| `gap_eu` | `6` | `MATCHMAKER_GAP_EU_USERNAME` / `MATCHMAKER_GAP_EU_PASSWORD` |
+| `gap_east` | `1`, `2` | `MATCHMAKER_GAP_EAST_USERNAME` / `MATCHMAKER_GAP_EAST_PASSWORD` |
+
+Bespoke chỉ gửi Basic `Authorization` cùng các header HTTP kỹ thuật cần thiết;
+không gửi `MasterUserAuth`, `CliUserAuth` hoặc `CanUserAuth`.
 
 Request JSON:
 
@@ -227,12 +290,12 @@ Content-Type: multipart/form-data; boundary=<generated-by-client>
 
 Các header authentication mà CRS có thể gửi:
 
-| Header | Data type | Trạng thái trong CRS hiện tại | Format | Mục đích |
-|---|---|---|---|---|
-| `Authorization` | string | Bắt buộc | `Basic ` + base64(`username:password`) | Basic authentication của MatchMaker API. |
-| `MasterUserAuth` | string | Conditional | base64(`peo_no:usr_token`) | Master/session token lấy từ `GET /api/Accounts/GetAccessToken`; Epsilon adapter gửi khi master token đã có trong state/cache. |
-| `CliUserAuth` | string | Conditional/reserved | base64(`peo_no:usr_token`) | Client session token sau `ClientLoginPost`; method login hiện là private và chưa có runtime caller. |
-| `CanUserAuth` | string | Conditional/reserved | base64(`peo_no:usr_token`) | Candidate session token sau `CandidateLoginPost`; method login hiện là private và chưa có runtime caller. |
+| Header | Adapter | Data type | Trạng thái trong CRS hiện tại | Format | Mục đích |
+|---|---|---|---|---|---|
+| `Authorization` | Epsilon và Bespoke | string | Bắt buộc | `Basic ` + base64(`username:password`) | Basic authentication bằng credential source riêng của từng adapter. |
+| `MasterUserAuth` | Epsilon only | string | Conditional | base64(`peo_no:usr_token`) | Master/session token lấy từ `GET /api/Accounts/GetAccessToken`; Epsilon adapter gửi khi master token đã có trong state/cache. |
+| `CliUserAuth` | Epsilon only | string | Conditional/reserved | base64(`peo_no:usr_token`) | Client session token sau `ClientLoginPost`; method login hiện là private và chưa có runtime caller. |
+| `CanUserAuth` | Epsilon only | string | Conditional/reserved | base64(`peo_no:usr_token`) | Candidate session token sau `CandidateLoginPost`; method login hiện là private và chưa có runtime caller. |
 
 Notes:
 
@@ -240,8 +303,10 @@ Notes:
   wire; CRS không gửi object hoặc JSON trong các header này.
 - `Conditional` nghĩa là header được thêm khi token tương ứng đã được tạo/cache;
   không phải mọi call path hiện tại đều gửi đủ cả ba header.
-- Một request có thể có `Authorization` cùng một hoặc nhiều custom auth header
-  tùy adapter/state. MM cần xác nhận header nào là bắt buộc cho từng endpoint.
+- Epsilon có thể có `Authorization` cùng một hoặc nhiều custom auth header tùy
+  adapter/state. MM cần xác nhận header nào là bắt buộc cho từng endpoint.
+- Bespoke chỉ có `Authorization` Basic từ `matchmaker.api_setting.*`; không kế
+  thừa token hoặc credential từ Epsilon.
 - Các endpoint theo candidate dùng `peo_no` trong path/query hoặc candidate
   context/auth headers theo từng endpoint.
 
