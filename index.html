@@ -71,7 +71,7 @@
   <body>
     <header class="site-header">
       <h1>MatchMaker API Contract</h1>
-      <p>Epsilon shows the full official catalog and CRS adapter routes; Bespoke / non-Epsilon shows the CRS direct integration routes.</p>
+      <p>Epsilon has two sections: <strong>CRS Epsilon adapter inventory</strong> lists the routes and authentication used by the current CRS integration, while <strong>Official Epsilon catalog</strong> is the complete official Swagger reference. Bespoke / non-Epsilon shows the CRS direct integration routes.</p>
       <nav class="adapter-tabs" aria-label="API adapter groups">
         <a class="adapter-tab" href="#epsilon" data-adapter="epsilon" aria-selected="true">
           Epsilon
@@ -86,10 +86,10 @@
       <p id="loading" class="loading">Loading API contract…</p>
       <p id="load-error" class="load-error" hidden></p>
       <section id="epsilon" aria-label="Epsilon API operations">
-        <h2 class="view-title">Official Epsilon catalog</h2>
-        <div id="swagger-ui-epsilon-official"></div>
         <h2 class="view-title">CRS Epsilon adapter inventory</h2>
         <div id="swagger-ui-epsilon-crs"></div>
+        <h2 class="view-title">Official Epsilon catalog</h2>
+        <div id="swagger-ui-epsilon-official"></div>
       </section>
       <section id="bespoke" aria-label="Bespoke API operations" hidden>
         <div id="swagger-ui-bespoke"></div>
@@ -103,6 +103,15 @@
         const adapterLabels = {
           epsilon: 'Epsilon',
           bespoke: 'Bespoke / non-Epsilon',
+        };
+        const adapterSecuritySchemes = {
+          epsilon: new Set([
+            'epsilonBasicAuth',
+            'masterUserAuth',
+            'clientUserAuth',
+            'candidateUserAuth',
+          ]),
+          bespoke: new Set(['bespokeBasicAuth']),
         };
         const httpMethods = new Set([
           'get',
@@ -141,6 +150,14 @@
         function buildAdapterSpec(source, adapter) {
           const paths = {};
           const usedTags = new Set([adapterLabels[adapter]]);
+          const securitySchemes = Object.fromEntries(
+            Object.entries(source.components?.securitySchemes || {}).filter(
+              ([name]) => adapterSecuritySchemes[adapter].has(name),
+            ),
+          );
+          const security = adapter === 'bespoke'
+            ? [{ bespokeBasicAuth: [] }]
+            : source.security;
 
           Object.entries(source.paths || {}).forEach(([path, pathItem]) => {
             const filteredPathItem = {};
@@ -185,6 +202,11 @@
               description: `${source.info.description}\n\nThis view contains only ${adapterLabels[adapter]} operations.`,
             },
             tags: (source.tags || []).filter((tag) => usedTags.has(tag.name)),
+            components: {
+              ...source.components,
+              securitySchemes,
+            },
+            security,
             paths,
           };
         }
@@ -222,8 +244,8 @@
           });
 
           if (adapter === 'epsilon') {
-            renderSwagger('epsilon-official', specs.epsilonOfficial, 'swagger-ui-epsilon-official');
             renderSwagger('epsilon-crs', specs.epsilonCrs, 'swagger-ui-epsilon-crs');
+            renderSwagger('epsilon-official', specs.epsilonOfficial, 'swagger-ui-epsilon-official');
             return;
           }
 

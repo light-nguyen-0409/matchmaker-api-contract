@@ -56,12 +56,12 @@ servers:
         default: support.matchmakersoftware.com:31006
         description: Official MatchMaker/Epsilon host over HTTPS; replace for another GAP environment.
 tags:
+  - name: Authentication
+    description: Authentication and token endpoints.
   - name: Epsilon
     description: Calls made through the Epsilon adapter or reserved Epsilon methods. Uses epsilonBasicAuth and may use conditional Epsilon user-auth headers.
   - name: Bespoke / non-Epsilon
     description: Calls made directly by the CRS Bespoke/legacy integration path. Uses bespokeBasicAuth only; it does not use Epsilon user-auth headers.
-  - name: Authentication
-    description: Authentication and token endpoints.
   - name: Health
     description: Connectivity and health endpoints.
   - name: Candidate read
