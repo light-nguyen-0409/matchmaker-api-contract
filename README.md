@@ -2,6 +2,8 @@
 
 > **API contract online:** [https://light-nguyen-0409.github.io/matchmaker-api-contract/](https://light-nguyen-0409.github.io/matchmaker-api-contract/)
 
+> **Swagger views:** [Epsilon](https://light-nguyen-0409.github.io/matchmaker-api-contract/#epsilon) · [Bespoke / non-Epsilon](https://light-nguyen-0409.github.io/matchmaker-api-contract/#bespoke)
+
 Static OpenAPI contract and Swagger UI for CRS integration with both
 MatchMaker/Epsilon and Bespoke/non-Epsilon calls.
 
@@ -19,7 +21,7 @@ version `2.0.1.0` (274 published paths, checked 2026-10-06).
 ## Files
 
 - openapi.yaml — OpenAPI 3.0.3 contract.
-- index.html — static Swagger UI entry point.
+- index.html — static Swagger UI entry point with separate Epsilon and Bespoke / non-Epsilon views.
 - .github/workflows/deploy-pages.yml — GitHub Pages deployment.
 
 The contract is intentionally scoped to the CRS integration inventory. It
@@ -34,7 +36,9 @@ the official Epsilon Swagger and the current CRS adapter.
 
 ## Local preview
 
-Serve this directory with any static file server, then open index.html.
+Serve this directory with any static file server, then open `index.html#epsilon` or
+`index.html#bespoke` to view one adapter group at a time. Both views are derived
+from `openapi.yaml`, so the contract remains in one source file.
 
 ## GitHub Pages
 
