@@ -121,6 +121,83 @@ Epsilon endpoint chỉ vì chúng dùng cùng MatchMaker host.
   đổi `MM-W01` sang route này khi mô tả Bespoke call hiện tại. Hai route phải
   tiếp tục được ghi riêng để tránh gửi request CRS hiện tại vào nhầm endpoint.
 
+## 1.4. Audit input/output và datatype với Epsilon Swagger
+
+Phần này tách hai khái niệm:
+
+- **Official response**: response và datatype được công bố trong Swagger
+  `2.0.1.0`.
+- **CRS runtime use**: source hiện có đọc body hay chỉ kiểm tra HTTP status.
+
+### 1.4.1. Official response và cách CRS sử dụng
+
+| ID | Official response thành công | CRS runtime hiện tại |
+|---|---|---|
+| MM-R01 | `UserToken`: `usr_token` string, `usr_token_expiry` date-time | Master flow chỉ lưu `usr_token`; candidate login đọc cả token và expiry. |
+| MM-R02 | integer | Chỉ check status, bỏ qua body. |
+| MM-R03 | Official 200 `HttpResponseMessage` object; discovery document không liệt kê 409 | CRS vẫn hiểu 409 hoặc body chính xác `ProfileExists` là duplicate; không parse object. |
+| MM-R05 | `PeopleDetails` object, gồm ID int32, date-time, boolean và number/double fields | Parse một subset field vào Candidate DTO. |
+| MM-R06 | string | Decode body như base64 image. |
+| MM-R07 | `CandidateCareerHistory.careers[]`; career ID và các ID liên quan int32, ngày `emp_from/emp_to` int32 | Parse các field career đang dùng; không validate datatype. |
+| MM-R08 | `PeoEducModel[]`; `edu_no`, `peo_no`, `edu_from`, `edu_to` int32 | Parse các field education đang dùng; không validate datatype. |
+| MM-R09 | `SimpleIntAndString[]`: `Id` int32, `Value` string | Parse cả hai field; DTO nội bộ giữ `Id` dưới dạng string. |
+| MM-R10 | `SimpleIntAndBool[]`: `Id` int32, `Value` boolean | Parse cả hai field; normalize `Value` bằng boolean parser. |
+| MM-R11 | `SimpleIntAndString[]`: `Id` int32, `Value` string | Parse cả hai field; CRS hiện không dùng `Value`. |
+| MM-R12 | array integer | Trả nguyên JSON array, chưa validate element type. |
+| MM-R13 | `ClassKeywordCategoryModel`: class metadata, sub-categories và keyword metadata | Bespoke parse `sub_categories[].keywords[].keyword_no/keyword`; không validate các field còn lại. |
+| MM-W02 | integer | Chỉ check status, bỏ qua body. |
+| MM-W03 | boolean | Chỉ check status, bỏ qua body. |
+| MM-W04–W13 | integer | Chỉ check status, bỏ qua body. |
+| MM-F02, MM-F04 | integer | Chỉ check status, bỏ qua body. |
+| MM-F06 | object; official còn công bố HTTP 400 và 415 | Chỉ check status 200, bỏ qua body; discovery không công bố tên form field. |
+| MM-F08 | integer | Dùng raw body làm log number. |
+| MM-F09 | `HttpResponseMessage` object | Chỉ check status; route/header hiện tại khác official path và form field `File`. |
+| MM-D01 | string | Reserved, chưa có caller hiện tại. |
+| MM-D02 | `LogAttachModel[]`; ID int32, date-time, time string và file data base64 | Reserved; method trả raw JSON array. |
+| MM-D03–D04 | Candidate/Client login model với các ID int32, token string, expiry date-time và client flags boolean | Route legacy; method private, candidate flow parse một phần response. |
+| MM-D05 | `HttpResponseMessage` object; official còn công bố HTTP 400 và 415 | Reserved, chưa có caller hiện tại; official discovery chỉ yêu cầu multipart và không công bố tên form field. |
+
+Đối với Bespoke path, các response type official tương ứng được ghi riêng trong
+comparison: `MM-W01` là `UploadResponse` (`peo_no` int32, `status` string),
+`MM-F01`/`MM-F07` là integer, và `MM-F10` là `HttpResponseMessage` object. Các
+type này không được dùng để thay thế behavior của Bespoke route hiện tại.
+
+Các route Bespoke CRS không trùng path với Epsilon discovery. Với route official
+tương ứng, Swagger vẫn cung cấp type để tham chiếu: `MM-W01` dùng
+`UploadResponse`, `MM-F01` và `MM-F07` dùng integer, còn `MM-F10` dùng
+`HttpResponseMessage` object. `MM-R04`, `MM-F03` và `MM-F05` không có route
+tương ứng trong discovery. Contract của path Bespoke vẫn mô tả theo source CRS:
+đa số chỉ check status; riêng `MM-W01` đọc `peo_no` từ JSON response và
+`MM-R13` parse skill object.
+
+### 1.4.2. Official input cần giữ trong contract
+
+| ID | Official input/datatype cần ghi rõ | Khoảng cách với CRS hiện tại |
+|---|---|---|
+| MM-R03 | `peo_no` int32 và các query optional `peo_email`, `peo_forename`, `peo_surname`, `peo_other_tel`, `peo_postcode` | CRS flow hiện chỉ gửi `peo_no`. |
+| MM-R09–R12 | Các query ngày official là string `date-time`; response/list ID là integer int32 | CRS hiện serialize query ngày thành `YYYY-MM-DD`; MM-R12 gửi body array integer. |
+| MM-R13 | Path `{id}` int32 | Bespoke hiện hardcode class ID `3`. |
+| MM-W02 | `PeopleDetailsUpdateModel`, gồm các field profile/status; date-time, boolean và double phải giữ đúng type | CRS gửi subset profile hoặc Live payload. |
+| MM-W03 | `PeoPayModel`; `peo_bank_number` và `peo_bank_sort_code` required, thêm `peo_bank_society_no` optional | CRS gửi subset payment fields. |
+| MM-W04 | `JsonForm_BankingModel`, gồm bank address và `peo_bank_society_no` ngoài các field account | CRS hiện gửi 4 field account. |
+| MM-W06 | `keyword_no_arr: integer[]` | CRS không validate element type dù official model là integer int32. |
+| MM-W05, MM-W07–W09 | Official Swagger chỉ khai báo query parameter, không khai báo request body | CRS hiện vẫn gửi JSON empty array `[]`. |
+| MM-W10, MM-W12 | `emp_no`/`edu_no`: int32 query | Source/contract cũ mô tả string trên wire. |
+| MM-W11 | `PeoCareerUpload`; `emp_from`, `emp_to` và các ID là int32; có thêm salary/OTE/reporting/benefits | CRS gửi subset và date value dạng `Ymd`. |
+| MM-W13 | `PeoEducModel`; `peo_no` required int32, các ID/date là int32 | CRS gửi subset và date value dạng `Ymd`. |
+| MM-F02, MM-F04, MM-F06 | Path `{id}` int32; `chk_no` int32 | CRS inventory đang dùng tên `{peo_no}` và type string. |
+| MM-F02 | `PeoPictureStringModel`: `peo_no` int32 và `peo_string` string; official không đánh dấu required | CRS hiện gửi cả hai field và base64 content. |
+| MM-F04 | `ComplianceAnswerModel`: boolean, string tối đa 255, memo string và date-time fields | CRS gửi năm field chính; schema runtime đang yêu cầu các field đó. |
+| MM-F06 | Path `{id}` int32, `chk_no` int32; official yêu cầu multipart nhưng discovery không khai báo tên form field | CRS hiện gửi part `file`. |
+| MM-F09 | Official path có `{id}` int32 và multipart field `File`; response là object | CRS hiện dùng path không có `{id}`, header `AttachRef`/`AttachType` và dynamic part name. |
+| MM-D05 | Path `{id}` int32; official yêu cầu multipart và công bố 400/415 nhưng không khai báo tên form field | CRS chưa có caller. |
+| MM-F08 | Query `peo_no` int32; body có thêm optional `cli_no`, `job_no`, `peo_no` int32 | CRS hiện chỉ gửi log fields và query candidate number. |
+| MM-D03, MM-D04 | Login body có schema riêng; candidate có `device`, `remember_me`, `ip_address`, client có `ip_address` | CRS legacy chỉ gửi username/password. |
+
+Vì vậy, các endpoint status-only vẫn phải có official response type trong tài
+liệu; cần ghi thêm `CRS ignores response body` để không biến response thành
+`empty` hoặc `unknown`.
+
 ## 2. Quy ước chung
 
 ### 2.1. Base URL
@@ -212,7 +289,8 @@ Cấp master token cho CRS gọi các endpoint Epsilon.
 }
 ~~~
 
-- usr_token: string, required.
+- usr_token: string; official Swagger does not declare a required list, but CRS
+  cannot continue the master-token flow without this field.
 - usr_token_expiry: date-time, được Epsilon Swagger công bố; CRS hiện chỉ cache
   usr_token.
 
@@ -234,7 +312,8 @@ Health check khả năng kết nối tới MatchMaker.
 
 **Success response — HTTP 2xx**
 
-Body không bắt buộc. CRS chỉ kiểm tra HTTP status; response body bị bỏ qua.
+Official Epsilon trả về integer ở HTTP 200. CRS chỉ kiểm tra HTTP status và bỏ
+qua response body.
 
 **Lỗi**
 
@@ -252,19 +331,21 @@ Query:
 
 | Field | Type | Required |
 |---|---|---|
-| peo_no | integer theo Epsilon Swagger; string trên wire hiện tại | yes trong CRS flow |
+| peo_no | integer int32 theo Epsilon Swagger; string trên wire hiện tại | optional theo official; CRS flow hiện gửi |
 
 Body: none.
 
 Epsilon Swagger công bố thêm các query `peo_email`, `peo_forename`,
-`peo_surname`, `peo_tel` và `peo_postcode`, đều optional. CRS hiện chỉ gửi
-`peo_no` từ flow này.
+`peo_surname`, `peo_other_tel` và `peo_postcode`, đều optional. Official maximum
+length lần lượt là 80, 16, 20, 20 và 10. CRS hiện chỉ gửi `peo_no` từ flow này.
 
 **Success / duplicate response**
 
-Một trong hai dạng sau được CRS hiểu là duplicate:
+Official discovery công bố HTTP 200 với body object. Một trong hai dạng sau được
+CRS runtime hiểu là duplicate:
 
-- HTTP 409, body unknown.
+- HTTP 409, body unknown; status này không được liệt kê trong discovery response
+  nhưng được CRS xử lý.
 - HTTP 2xx với body chính xác là JSON string ProfileExists.
 
 ~~~json
@@ -322,7 +403,7 @@ JSON object:
 
 | Field | Type |
 |---|---|
-| peo_no | string hoặc unknown |
+| peo_no | integer int32 theo Epsilon Swagger |
 | peo_title | string |
 | peo_forename | string |
 | peo_surname | string |
@@ -335,10 +416,16 @@ JSON object:
 | peo_other_tel | string |
 | peo_email | string |
 | peo_status | string |
-| peo_status_date | string datetime hoặc unknown |
+| peo_status_date | string date-time |
 | peo_nationality | string |
 
 CRS map trực tiếp các field trên vào candidate DTO.
+
+Official `PeopleDetails` còn công bố các field `peo_updated`, `peo_grp`,
+`peo_branch`, `peo_division`, `peo_ni`, `peo_known`, `peo_street`,
+`peo_district`, `peo_home_tel`, `peo_work_tel`, `peo_reloc`,
+`peo_marital_status`, `peo_driver`, `peo_empl_type`, `peo_region`, `peo_x` và
+`peo_y`; các field này chưa được CRS DTO sử dụng.
 
 ### MM-R06 — GET /api/Candidates/GetPicture
 
@@ -380,21 +467,29 @@ Trả danh sách career hiện tại của candidate.
 {
   "careers": [
     {
-      "emp_no": "string-or-unknown",
+      "emp_no": 123,
+      "peo_no": 123,
+      "cli_no": 123,
+      "job_no": 123,
       "emp_cli_name": "string",
       "emp_job_title": "string",
       "emp_responsibilities": "string",
-      "emp_from": "string",
-      "emp_to": "string"
+      "emp_from": 20260101,
+      "emp_to": 20261231
     }
   ]
 }
 ~~~
 
-- careers: array<object>, required.
-- emp_no: candidate career ID; type hiện chưa được CRS enforce.
-- emp_cli_name, emp_job_title, emp_responsibilities: string.
-- emp_from, emp_to: date string; format external chưa được CRS validate.
+- careers: array<object>; official model does not mark this property required,
+  but CRS expects it when parsing.
+- emp_no, peo_no, cli_no, job_no: integer int32 theo Epsilon Swagger.
+- emp_cli_name, emp_job_title, emp_responsibilities: string; official requires
+  `emp_cli_name`, `emp_job_title` and `emp_from`.
+- emp_from, emp_to: integer int32 dạng ngày theo model Epsilon; CRS DTO giữ
+  string `Ymd` và chưa validate response type.
+- Official model còn có `emp_salary`, `emp_ote`, `emp_reporting_to`,
+  `emp_reporting_to_peo_no` và `emp_benefits`.
 
 ### MM-R08 — GET /api/Candidates/GetEducation
 
@@ -413,20 +508,22 @@ Trả danh sách education hiện tại của candidate.
 ~~~json
 [
   {
-    "edu_no": "string-or-unknown",
-    "peo_no": "string-or-unknown",
+    "edu_no": 123,
+    "peo_no": 123,
     "edu_school": "string",
     "edu_quals": "string",
-    "edu_from": "string",
-    "edu_to": "string"
+    "edu_from": 20260101,
+    "edu_to": 20261231
   }
 ]
 ~~~
 
 - Response root: array<object>.
-- edu_no, peo_no: ID; type hiện chưa được CRS enforce.
+- edu_no: integer int32; `peo_no` integer int32 and required theo Epsilon
+  Swagger.
 - edu_school, edu_quals: string.
-- edu_from, edu_to: date string; format external chưa được CRS validate.
+- edu_from, edu_to: integer int32 dạng ngày theo model Epsilon; CRS DTO giữ
+  string `Ymd` và chưa validate response type.
 
 ### MM-R09 — GET /api/Candidates/GetCandidatesByStatusDate
 
@@ -440,7 +537,7 @@ Query:
 
 | Field | Type | Required |
 |---|---|---|
-| dt | string, YYYY-MM-DD | yes |
+| dt | official string date-time; CRS wire `YYYY-MM-DD` | yes |
 
 Body: none.
 
@@ -472,7 +569,7 @@ Query:
 
 | Field | Type | Required |
 |---|---|---|
-| sinceDate | string, YYYY-MM-DD | yes |
+| sinceDate | official string date-time; CRS wire `YYYY-MM-DD` | yes |
 
 Body: none.
 
@@ -489,7 +586,8 @@ Body: none.
 
 - Id: peo_no, Epsilon Swagger khai báo integer; parser CRS hiện không enforce
   kiểu external.
-- Value: boolean hoặc string boolean; CRS normalize bằng boolean parser.
+- Value: boolean theo Epsilon Swagger; CRS normalize bằng boolean parser nên vẫn
+  chấp nhận string boolean nếu external trả về string.
 
 ### MM-R11 — GET /api/General/GetCandsOnPlan
 
@@ -503,7 +601,7 @@ Query:
 
 | Field | Type | Required |
 |---|---|---|
-| startDate | string, YYYY-MM-DD | yes |
+| startDate | official string date-time; CRS wire `YYYY-MM-DD` | yes |
 
 Body: none.
 
@@ -521,7 +619,7 @@ Body: none.
 - Response root: array<object>.
 - Id: peo_no, Epsilon Swagger khai báo integer; parser CRS hiện không enforce
   kiểu external.
-- Value: CRS hiện không dùng; type unknown.
+- Value: string theo Epsilon Swagger; CRS hiện không dùng field này.
 
 ### MM-R12 — POST /api/General/GetCandsOnPlan
 
@@ -535,8 +633,8 @@ Query:
 
 | Field | Type | Required |
 |---|---|---|
-| startDate | string, YYYY-MM-DD | yes |
-| endDate | string, YYYY-MM-DD | yes |
+| startDate | official string date-time; CRS wire `YYYY-MM-DD` | yes |
+| endDate | official string date-time; CRS wire `YYYY-MM-DD` | yes |
 
 Body: JSON array. Element type chưa được enforce trong CRS; giá trị được kỳ vọng
 là peo_no.
@@ -583,16 +681,29 @@ Bản Bespoke hiện tại cố định class ID `3`. Epsilon Swagger công bố
 
 ~~~text
 {
+  class_no: integer
+  class_name: string
+  class_webpeo: boolean
+  class_webjob: boolean
   sub_categories: array<object>
+    hrc_no: integer
+    hrc_parent_no: integer
+    hrc_desc: string
     keywords: array<object>
-      keyword_no: unknown
+      keyword_no: integer
+      class_no: integer
       keyword: string
+      approved: boolean
+      description: string
+      approval: string datetime
 }
 ~~~
 
 - sub_categories: array<object>, required.
 - sub_categories[].keywords: array<object>, required.
-- keyword_no: skill ID; type external chưa được CRS enforce.
+- class_no, hrc_no, hrc_parent_no, keyword_no: integer theo Epsilon Swagger.
+- class_webpeo, class_webjob, approved: boolean.
+- hrc_desc, description: string; approval: date-time.
 - keyword: string.
 
 ## 4. Candidate registration và update
@@ -685,7 +796,7 @@ object
     any_health_issues: string
     any_convictions: string
     agree_to_check: boolean
-  references: array<unknown>, hiện gửi rỗng
+  references: array<unknown> trên Bespoke payload hiện tại, hiện gửi rỗng
   agreements: object
     data_protection: boolean
     opt_out: boolean
@@ -751,6 +862,20 @@ Epsilon có route riêng `/api/Onboarding/RegisterCandidate` với request
 `status` (`CREATED` hoặc `UPDATED`). Mục này vẫn mô tả route Bespoke hiện tại
 `/api/Candidates/RegisterCandidate`.
 
+Để đối chiếu đầy đủ input của route official: `RegUploadModelV12` yêu cầu
+`candidate`, `overview`, `health_and_safety`, `shift_preference`,
+`health_and_criminal` và `agreements`. Các field bổ sung có datatype rõ trong
+Swagger là `peo_gdpr_consenttostore`, `peo_gdpr_consenttoshare`,
+`peo_gdpr_consenttomarketing`, `peo_gdpr_consenttodirectcomm`, `peo_gdpr_5`
+đến `peo_gdpr_8`, `set_avail`, `public_sector` kiểu boolean;
+`skills_numbers` là array<int32>; `ip_address`, `start_declaration`, `notes` là
+string; `ltd_company` là object gồm `name` và `number` string. Candidate official
+giữ các ID/salary kiểu int32, ngày sinh `date-time`, và các cờ candidate kiểu
+boolean. Career/education registration dùng ngày `date-time` string, khác với
+career/education update dùng integer `Ymd`. `references` là array của object
+referee có các field string, `can_we_reference` boolean và `ref_emailed_on`
+date-time.
+
 ### MM-W02 — PUT /api/Candidates/UpdateCandidateMain
 
 **Mục đích**
@@ -785,9 +910,16 @@ object
   peo_date_birth: string datetime
 ~~~
 
+Official `PeopleDetailsUpdateModel` also includes `peo_known`, `peo_home_tel`,
+`peo_work_tel`, `peo_reloc`, `peo_marital_status`, `peo_driver`,
+`peo_empl_type`, `peo_region`, `peo_x` and `peo_y`; the CRS update sends only a
+subset. The official string fields have documented maximum lengths, and the date
+fields are `date-time` strings.
+
 **Success response**
 
-HTTP 2xx. Response body không được CRS parse; empty body được chấp nhận.
+HTTP 200 trả về integer int32 theo Epsilon Swagger. Response body không được CRS
+parse; empty body chỉ là behavior hiện tại cần MM xác nhận.
 
 ### MM-W03 — PUT /api/Candidates/UpdatePaymentDetails
 
@@ -804,11 +936,12 @@ object
   peo_bank_number: string
   peo_bank_sort_code: string
   peo_ni: string, optional
+  peo_bank_society_no: string, optional
 ~~~
 
 **Success response**
 
-HTTP 2xx; body ignored by CRS.
+HTTP 200 trả về boolean theo Epsilon Swagger; CRS chỉ check status và bỏ qua body.
 
 ### MM-W04 — POST /api/Candidates/UpdateBankDetails
 
@@ -824,11 +957,16 @@ object
   peo_bank_acc_name: string
   peo_bank_number: string
   peo_bank_sort_code: string
+  peo_bank_society_no: string, optional
 ~~~
+
+Official `JsonForm_BankingModel` còn công bố các field địa chỉ bank
+`peo_bank_establish`, `peo_bank_street`, `peo_bank_district`, `peo_bank_town`,
+`peo_bank_county` và `peo_bank_postcode`; CRS hiện chỉ gửi subset account fields.
 
 **Success response**
 
-HTTP 2xx; body ignored by CRS.
+HTTP 200 trả về integer int32; CRS chỉ check status và bỏ qua body.
 
 ### MM-W05 — POST /api/Candidates/UpdateSource
 
@@ -848,7 +986,7 @@ Body: JSON empty array [].
 
 **Success response**
 
-HTTP 2xx; body ignored by CRS.
+HTTP 200 trả về integer int32; CRS chỉ check status và bỏ qua body.
 
 ### MM-W06 — POST /api/Candidates/AddCandidateCodes
 
@@ -860,15 +998,15 @@ HTTP 2xx; body ignored by CRS.
 
 ~~~text
 object
-  keyword_no_arr: array<unknown>
+  keyword_no_arr: array<integer int32>
 ~~~
 
-Các phần tử được kỳ vọng là numeric skill IDs, nhưng CRS không enforce element
-type tại interface này.
+Official model yêu cầu mảng integer int32; CRS không enforce element type tại
+interface này.
 
 **Success response**
 
-HTTP 2xx; body ignored by CRS.
+HTTP 200 trả về integer int32; CRS chỉ check status và bỏ qua body.
 
 ### MM-W07 — PUT /api/Candidates/SavePenPicture
 
@@ -888,7 +1026,7 @@ Body: JSON empty array [].
 
 **Success response**
 
-HTTP 2xx; body ignored by CRS.
+HTTP 200 trả về integer int32; CRS chỉ check status và bỏ qua body.
 
 ### MM-W08 — PUT /api/Candidates/UpdateCandidateStarterDeclaration
 
@@ -908,7 +1046,7 @@ Body: JSON empty array [].
 
 **Success response**
 
-HTTP 2xx; body ignored by CRS.
+HTTP 200 trả về integer int32; CRS chỉ check status và bỏ qua body.
 
 ### MM-W09 — PUT /api/Candidates/UpdateCandidateConsultant
 
@@ -928,7 +1066,7 @@ Body: JSON empty array [].
 
 **Success response**
 
-HTTP 2xx; body ignored by CRS.
+HTTP 200 trả về integer int32; CRS chỉ check status và bỏ qua body.
 
 ### MM-W10 — DELETE /api/Candidates/DeleteCandidateCareer
 
@@ -942,13 +1080,13 @@ Query:
 
 | Field | Type | Required |
 |---|---|---|
-| emp_no | string trên wire; source type unknown | yes |
+| emp_no | official integer int32; CRS source truyền giá trị từ DTO string | yes |
 
 Body: none.
 
 **Success response**
 
-HTTP 2xx; body ignored by CRS.
+HTTP 200 trả về integer int32; CRS chỉ check status và bỏ qua body.
 
 ### MM-W11 — POST /api/Candidates/AddCandidateCareer
 
@@ -963,13 +1101,23 @@ object
   emp_cli_name: string
   emp_responsibilities: string
   emp_job_title: string
-  emp_from: string date
-  emp_to: string date
+  emp_from: integer int32, required
+  emp_to: integer int32, optional
+  cli_no: integer int32, optional
+  job_no: integer int32, optional
+  emp_salary: integer int32, optional
+  emp_ote: integer int32, optional
+  emp_reporting_to: string, optional
+  emp_reporting_to_peo_no: integer int32, optional
+  emp_benefits: string, optional
 ~~~
+
+`emp_cli_name` và `emp_job_title` là required, có maximum length 50; CRS DTO
+hiện giữ date value ở dạng `Ymd` trước khi gửi integer.
 
 **Success response**
 
-HTTP 2xx; body ignored by CRS.
+HTTP 200 trả về integer int32; CRS chỉ check status và bỏ qua body.
 
 ### MM-W12 — DELETE /api/Candidates/DeleteCandidateEducation
 
@@ -983,13 +1131,13 @@ Query:
 
 | Field | Type | Required |
 |---|---|---|
-| edu_no | string trên wire; source type unknown | yes |
+| edu_no | official integer int32; CRS source truyền giá trị từ DTO string | yes |
 
 Body: none.
 
 **Success response**
 
-HTTP 2xx; body ignored by CRS.
+HTTP 200 trả về integer int32; CRS chỉ check status và bỏ qua body.
 
 ### MM-W13 — POST /api/Candidates/AddCandidateEducation
 
@@ -1001,16 +1149,18 @@ Thêm một education vào candidate.
 
 ~~~text
 object
-  peo_no: unknown
-  edu_quals: string
-  edu_school: string
-  edu_from: string date
-  edu_to: string date
+  peo_no: integer int32, required
+  edu_quals: string, maximum length 50
+  edu_school: string, maximum length 40
+  edu_from: integer int32, optional
+  edu_to: integer int32, optional
 ~~~
+
+CRS DTO giữ date value ở dạng `Ymd` trước khi gửi theo model official.
 
 **Success response**
 
-HTTP 2xx; body ignored by CRS.
+HTTP 200 trả về integer int32; CRS chỉ check status và bỏ qua body.
 
 ## 5. Picture, compliance, contact log và file
 
@@ -1026,7 +1176,7 @@ Path:
 
 | Field | Type |
 |---|---|
-| peo_no | string |
+| peo_no | string trên CRS Bespoke route; official `SavePictureString` không có path parameter |
 
 JSON body:
 
@@ -1038,11 +1188,14 @@ object
 
 Đây là route Bespoke của CRS. Epsilon Swagger dùng
 `/api/Candidates/SavePictureString` không có path parameter và nhận
-`PeoPictureModel` trong body.
+`PeoPictureModel` trong body: `peo_picture` là base64 string required và
+`peo_no` là integer int32 optional.
 
 **Success response**
 
-HTTP 200. Body ignored by CRS.
+CRS Bespoke chỉ check HTTP 200 và bỏ qua body. Official Epsilon route
+`/api/Candidates/SavePictureString` trả integer int32 và nhận `PeoPictureModel`
+khác với route CRS này.
 
 ### MM-F02 — POST /api/Onboarding/SavePictureString/{peo_no}
 
@@ -1052,7 +1205,7 @@ Upload profile image cho duplicate/existing candidate.
 
 **Request**
 
-Path peo_no: string.
+Path peo_no: string trên inventory CRS; official `{id}` là integer int32.
 
 JSON body:
 
@@ -1062,9 +1215,12 @@ object
   peo_string: string base64
 ~~~
 
+Official `PeoPictureStringModel` types these fields as `peo_no` integer int32
+and `peo_string` string without a required list; CRS sends both fields.
+
 **Success response**
 
-HTTP 2xx. Body ignored by CRS.
+Official HTTP 200 trả integer int32; CRS chỉ check status và bỏ qua body.
 
 ### MM-F03 — POST /api/Compliance/UploadAnswer/{peo_no}
 
@@ -1076,11 +1232,12 @@ Gửi Right to Work answer cho standard candidate.
 
 Path:
 
-- peo_no: string.
+- peo_no: string trên route Bespoke.
 
 Query:
 
-- chk_no: string, current value 1.
+- chk_no: string trên route Bespoke, current value 1; official `chk_no` là
+  integer int32.
 
 JSON body:
 
@@ -1108,15 +1265,19 @@ Gửi Right to Work answer cho duplicate/existing candidate.
 
 **Request**
 
-Path peo_no: string.
+Path peo_no: string trên inventory CRS; official `{id}` là integer int32.
 
-Query chk_no: string, current value 1.
+Query chk_no: string trên inventory CRS, current value 1; official `chk_no` là
+integer int32.
 
-JSON body có cùng schema MM-F03.
+JSON body có cùng schema MM-F03. Official `ComplianceAnswerModel` dùng
+`peo_bool` boolean, `peo_text`/`peo_other` string tối đa 255 ký tự,
+`peo_memo` string và hai field ngày dạng date-time; official không khai báo
+required list, còn CRS hiện gửi năm field chính.
 
 **Success response**
 
-HTTP 2xx. Body ignored by CRS.
+Official HTTP 200 trả integer int32; CRS chỉ check status và bỏ qua body.
 
 ### MM-F05 — POST /api/Compliance/UploadAttachment/{peo_no}
 
@@ -1126,9 +1287,9 @@ Upload RTW certificate cho standard candidate.
 
 **Request**
 
-Path peo_no: string.
+Path peo_no: string trên route Bespoke.
 
-Query chk_no: string, current value 1.
+Query chk_no: string trên route Bespoke, current value 1.
 
 Multipart body:
 
@@ -1140,7 +1301,8 @@ Filename được gửi cùng multipart part.
 
 **Success response**
 
-HTTP 200. Body ignored by CRS.
+CRS Bespoke chỉ check HTTP 200 và bỏ qua body. Epsilon không công bố route
+`/api/Compliance/UploadAttachment`.
 
 Epsilon Swagger không công bố route `/api/Compliance/UploadAttachment`; route
 Epsilon tương ứng cho flow onboarding là `/api/Onboarding/UploadAttachment/{id}`.
@@ -1153,9 +1315,10 @@ Upload RTW certificate cho duplicate/existing candidate.
 
 **Request**
 
-Path peo_no: string.
+Path peo_no: string trên inventory CRS; official `{id}` là integer int32.
 
-Query chk_no: string, current value 1.
+Query chk_no: string trên inventory CRS, current value 1; official `chk_no` là
+integer int32.
 
 Multipart body:
 
@@ -1167,7 +1330,9 @@ Tên part hiện tại thường là file; method vẫn nhận attachment name d
 
 **Success response**
 
-HTTP 2xx. Body ignored by CRS.
+Official HTTP 200 trả `HttpResponseMessage` object; CRS chỉ check status và bỏ
+qua body. Official còn công bố 400 và 415; discovery không công bố tên form
+field, trong khi CRS hiện gửi part `file`.
 
 ### MM-F07 — POST /api/Candidates/AddToContactLog
 
@@ -1181,7 +1346,7 @@ Query:
 
 | Field | Type | Required |
 |---|---|---|
-| peo_no | string | yes |
+| peo_no | string trên CRS route; official integer int32 | yes |
 
 JSON body:
 
@@ -1194,7 +1359,8 @@ object
 
 **Success response**
 
-HTTP 200. Body ignored by CRS.
+CRS Bespoke chỉ check HTTP 200 và bỏ qua body. Official Epsilon tương ứng là
+`/api/Candidates/AddContactLog`, không phải route này.
 
 Epsilon Swagger dùng `/api/Candidates/AddContactLog`, với request model có các
 field log bắt buộc và các ID `cli_no`, `job_no`, `peo_no` tùy chọn. CRS hiện gọi
@@ -1209,7 +1375,7 @@ additional documents.
 
 **Request**
 
-Query peo_no: string.
+Query peo_no: string trên inventory CRS; official integer int32.
 
 JSON body:
 
@@ -1218,13 +1384,17 @@ object
   log_action: string
   log_subject: string
   log_txt: string
+  cli_no: integer int32, optional
+  job_no: integer int32, optional
+  peo_no: integer int32, optional
 ~~~
 
 **Success response**
 
-HTTP 2xx. CRS dùng raw response body làm log number.
+Official HTTP 200 trả integer int32. CRS chỉ check status rồi dùng raw response
+body làm log number.
 
-- Response type expected by CRS: string.
+- Response type official: integer int32; CRS giữ raw body dưới dạng string.
 - Exact format: unknown; MM nên trả log number ổn định, không bọc envelope nếu
   muốn tương thích với implementation hiện tại.
 
@@ -1258,7 +1428,10 @@ gọi path không có `{id}` và truyền `AttachRef`/`AttachType` trong header.
 
 **Success response**
 
-HTTP 2xx. Body ignored by CRS.
+Official HTTP 200 trả `HttpResponseMessage` object; CRS chỉ check status và bỏ
+qua body. Official route yêu cầu path `{id}` integer int32 và multipart field
+`File`; CRS hiện dùng path không có `{id}`, header `AttachRef`/`AttachType` và
+part name động.
 
 ### MM-F10 — POST /api/Candidates/UploadAppPack/{peo_no}
 
@@ -1303,7 +1476,8 @@ không hiểu nhầm là CRS đang sử dụng.
 
 **Success response**
 
-Raw JSON/value. Type và schema: unknown.
+Official HTTP 200 trả string. CRS chưa có caller hiện tại để xác nhận format
+ngoài type đã công bố.
 
 **Integration status**
 
@@ -1321,13 +1495,16 @@ Query:
 
 | Field | Type | Required |
 |---|---|---|
-| logNo | string | yes |
+| logNo | integer int32 | yes |
 
 Body: none.
 
 **Success response**
 
-Array được trả nguyên từ MM. Item schema: unknown.
+Official HTTP 200 trả `LogAttachModel[]`. Mỗi item có `log_no`, `att_no` kiểu
+integer int32; `att_filename`, `att_folder`, `att_created_time` và
+`att_modified_time` là string; `att_created_date`/`att_modified_date` là
+date-time; `att_file_data` là base64 string. CRS trả raw JSON array.
 
 **Integration status**
 
@@ -1347,6 +1524,17 @@ JSON body:
 object
   username: string
   password: string
+  device: object, optional
+    model: string, required when device is sent
+    platform: string, required when device is sent
+    uuid: string, required when device is sent
+    version: string, required when device is sent
+    manufacturer: string, required when device is sent
+    name: string, required when device is sent
+    app_name: string, required when device is sent
+    firebase_token: string, optional
+  remember_me: boolean, optional
+  ip_address: string, optional
 ~~~
 
 **Success response dự kiến**
@@ -1364,9 +1552,9 @@ object
   usr_token_expiry: string datetime
 ~~~
 
-Epsilon Swagger dùng route `/api/Accounts/CandidateLogin` và request có thêm
-`device`, `remember_me` và `ip_address`. `CandidateLoginPost` là route legacy
-được CRS giữ trong reserved inventory.
+Epsilon Swagger dùng route `/api/Accounts/CandidateLogin`; `CandidateLoginPost`
+là route legacy được CRS giữ trong reserved inventory. CRS legacy hiện chỉ gửi
+`username` và `password`.
 
 **Integration status**
 
@@ -1386,6 +1574,7 @@ JSON body:
 object
   username: string
   password: string
+  ip_address: string, optional
 ~~~
 
 **Success response dự kiến**
@@ -1407,9 +1596,10 @@ object
   usr_allowreports: boolean
 ~~~
 
-Epsilon Swagger dùng route `/api/Accounts/ClientLogin` và request có thêm
-`device`, `remember_me` và `ip_address`. `ClientLoginPost` là route legacy được
-CRS giữ trong reserved inventory.
+Epsilon Swagger dùng route `/api/Accounts/ClientLogin`; request official chỉ có
+`username`, `password` và `ip_address`. `ClientLoginPost` là route legacy được
+CRS giữ trong reserved inventory. CRS legacy hiện chỉ gửi `username` và
+`password`.
 
 **Integration status**
 
@@ -1424,9 +1614,10 @@ Upload App Pack vào contact log đầu tiên.
 **Request**
 
 - Path `peo_no`: string trong inventory CRS; Epsilon Swagger khai báo `{id}` là
-  integer.
-- Body: multipart bắt buộc; Epsilon Swagger công bố response `HttpResponseMessage`
-  với các status 200, 400 và 415.
+  integer int32.
+- Body: multipart bắt buộc; discovery document không công bố tên form field.
+- Response: `HttpResponseMessage` object ở 200; 400 khi không có candidate; 415
+  khi Content-Type không phải multipart/form-data.
 
 Route chính thức là `/api/Onboarding/UploadAppPack/{id}`. CRS hiện chưa có
 caller cho method reserved này.
@@ -1436,12 +1627,15 @@ caller cho method reserved này.
 Chỉ còn constant/comment trong source. EpsilonApi::uploadAppPack() hiện dùng
 MM-F08 và MM-F09 thay thế.
 
-## 7. Validation items trước khi MM phát hành contract chính thức
+## 7. Items cần MM xác nhận thêm trước khi phát hành contract chính thức
 
-- Xác nhận type và nullability của các ID: peo_no, emp_no, edu_no, keyword_no,
-  Id và log number.
-- Xác nhận format chính thức của các field date/time.
-- Xác nhận response body của các endpoint hiện CRS chỉ kiểm tra HTTP status.
+- Xác nhận nullability và behavior thực tế của các field Swagger không đánh dấu
+  required, đặc biệt `UserToken`, `PeopleDetails`, `PeoPictureStringModel` và
+  `ComplianceAnswerModel`.
+- Xác nhận MM chấp nhận query ngày `YYYY-MM-DD` mà CRS đang gửi, vì Swagger
+  khai báo datatype `date-time`.
+- Xác nhận response body thực tế của các endpoint hiện CRS chỉ kiểm tra HTTP
+  status; contract đã ghi official type nhưng runtime chưa validate body.
 - Xác nhận error response envelope để CRS có thể parse thống nhất.
 - Xác nhận response format của AddToContactLog có phải raw log number hay
   JSON-wrapped value.

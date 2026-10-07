@@ -91,7 +91,7 @@ paths:
       x-crs-integration-status: active
       responses:
         '200':
-          $ref: '#/components/responses/EmptySuccess'
+          $ref: '#/components/responses/OfficialEpsilonIntegerSuccess'
         default:
           $ref: '#/components/responses/Error'
 
@@ -102,11 +102,54 @@ paths:
       operationId: checkDuplicateByPeoNo
       x-crs-integration-status: active
       parameters:
-        - $ref: '#/components/parameters/PeoNoQuery'
+        - name: peo_no
+          in: query
+          required: false
+          schema:
+            type: integer
+            format: int32
+        - name: peo_email
+          in: query
+          required: false
+          description: Candidate email address; official maximum length is 80.
+          schema:
+            type: string
+            maxLength: 80
+        - name: peo_forename
+          in: query
+          required: false
+          description: Candidate forename; official maximum length is 16.
+          schema:
+            type: string
+            maxLength: 16
+        - name: peo_surname
+          in: query
+          required: false
+          description: Candidate surname; official maximum length is 20.
+          schema:
+            type: string
+            maxLength: 20
+        - name: peo_other_tel
+          in: query
+          required: false
+          description: Candidate telephone number; official maximum length is 20.
+          schema:
+            type: string
+            maxLength: 20
+        - name: peo_postcode
+          in: query
+          required: false
+          description: Candidate postcode; official maximum length is 10.
+          schema:
+            type: string
+            maxLength: 10
       responses:
         '200':
           description: Candidate is not duplicated, or the response body is ProfileExists.
           content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UnknownObject'
             text/plain:
               schema:
                 type: string
@@ -241,6 +284,7 @@ paths:
         - name: dt
           in: query
           required: true
+          description: Official Swagger declares date-time; CRS currently sends YYYY-MM-DD and the endpoint applies day-level filtering.
           schema:
             $ref: '#/components/schemas/DateOnly'
       responses:
@@ -265,6 +309,7 @@ paths:
         - name: sinceDate
           in: query
           required: true
+          description: Official Swagger declares date-time; CRS currently sends YYYY-MM-DD.
           schema:
             $ref: '#/components/schemas/DateOnly'
       responses:
@@ -289,6 +334,7 @@ paths:
         - name: startDate
           in: query
           required: true
+          description: Official Swagger declares date-time; CRS currently sends YYYY-MM-DD.
           schema:
             $ref: '#/components/schemas/DateOnly'
       responses:
@@ -311,11 +357,13 @@ paths:
         - name: startDate
           in: query
           required: true
+          description: Official Swagger declares date-time; CRS currently sends YYYY-MM-DD.
           schema:
             $ref: '#/components/schemas/DateOnly'
         - name: endDate
           in: query
           required: true
+          description: Official Swagger declares date-time; CRS currently sends YYYY-MM-DD.
           schema:
             $ref: '#/components/schemas/DateOnly'
       requestBody:
@@ -330,7 +378,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/UnknownArray'
+                $ref: '#/components/schemas/IntegerArray'
         default:
           $ref: '#/components/responses/Error'
 
@@ -360,6 +408,8 @@ paths:
       x-crs-integration-status: active
       x-crs-adapter: 'Bespoke / non-Epsilon'
       x-official-epsilon-path: /api/Onboarding/RegisterCandidate
+      x-official-epsilon-request-schema: '#/components/schemas/OfficialRegUploadModelV12'
+      x-official-epsilon-response-schema: '#/components/schemas/OfficialUploadResponse'
       requestBody:
         required: true
         content:
@@ -402,7 +452,7 @@ paths:
                 - $ref: '#/components/schemas/CandidateLiveUpdate'
       responses:
         '200':
-          $ref: '#/components/responses/EmptySuccess'
+          $ref: '#/components/responses/OfficialEpsilonIntegerSuccess'
         '204':
           $ref: '#/components/responses/EmptySuccess'
         default:
@@ -422,7 +472,7 @@ paths:
               $ref: '#/components/schemas/PaymentDetails'
       responses:
         '200':
-          $ref: '#/components/responses/EmptySuccess'
+          $ref: '#/components/responses/OfficialEpsilonBooleanSuccess'
         '204':
           $ref: '#/components/responses/EmptySuccess'
         default:
@@ -442,7 +492,7 @@ paths:
               $ref: '#/components/schemas/BankDetails'
       responses:
         '200':
-          $ref: '#/components/responses/EmptySuccess'
+          $ref: '#/components/responses/OfficialEpsilonIntegerSuccess'
         '204':
           $ref: '#/components/responses/EmptySuccess'
         default:
@@ -462,13 +512,14 @@ paths:
             type: string
       requestBody:
         required: true
+        description: CRS sends JSON empty array; the official Epsilon Swagger declares no request body parameter for this operation.
         content:
           application/json:
             schema:
               $ref: '#/components/schemas/EmptyArray'
       responses:
         '200':
-          $ref: '#/components/responses/EmptySuccess'
+          $ref: '#/components/responses/OfficialEpsilonIntegerSuccess'
         '204':
           $ref: '#/components/responses/EmptySuccess'
         default:
@@ -488,7 +539,7 @@ paths:
               $ref: '#/components/schemas/SkillCodes'
       responses:
         '200':
-          $ref: '#/components/responses/EmptySuccess'
+          $ref: '#/components/responses/OfficialEpsilonIntegerSuccess'
         '204':
           $ref: '#/components/responses/EmptySuccess'
         default:
@@ -510,13 +561,14 @@ paths:
           description: CRS strips apostrophes, URL-encodes and limits the value to 1500 characters.
       requestBody:
         required: true
+        description: CRS sends JSON empty array; the official Epsilon Swagger declares no request body parameter for this operation.
         content:
           application/json:
             schema:
               $ref: '#/components/schemas/EmptyArray'
       responses:
         '200':
-          $ref: '#/components/responses/EmptySuccess'
+          $ref: '#/components/responses/OfficialEpsilonIntegerSuccess'
         '204':
           $ref: '#/components/responses/EmptySuccess'
         default:
@@ -536,13 +588,14 @@ paths:
             type: string
       requestBody:
         required: true
+        description: CRS sends JSON empty array; the official Epsilon Swagger declares no request body parameter for this operation.
         content:
           application/json:
             schema:
               $ref: '#/components/schemas/EmptyArray'
       responses:
         '200':
-          $ref: '#/components/responses/EmptySuccess'
+          $ref: '#/components/responses/OfficialEpsilonIntegerSuccess'
         '204':
           $ref: '#/components/responses/EmptySuccess'
         default:
@@ -562,13 +615,14 @@ paths:
             type: string
       requestBody:
         required: true
+        description: CRS sends JSON empty array; the official Epsilon Swagger declares no request body parameter for this operation.
         content:
           application/json:
             schema:
               $ref: '#/components/schemas/EmptyArray'
       responses:
         '200':
-          $ref: '#/components/responses/EmptySuccess'
+          $ref: '#/components/responses/OfficialEpsilonIntegerSuccess'
         '204':
           $ref: '#/components/responses/EmptySuccess'
         default:
@@ -585,11 +639,12 @@ paths:
           in: query
           required: true
           schema:
-            type: string
+            type: integer
+            format: int32
           description: Career ID. Source element type is not enforced by CRS.
       responses:
         '200':
-          $ref: '#/components/responses/EmptySuccess'
+          $ref: '#/components/responses/OfficialEpsilonIntegerSuccess'
         '204':
           $ref: '#/components/responses/EmptySuccess'
         default:
@@ -609,7 +664,7 @@ paths:
               $ref: '#/components/schemas/CareerInput'
       responses:
         '200':
-          $ref: '#/components/responses/EmptySuccess'
+          $ref: '#/components/responses/OfficialEpsilonIntegerSuccess'
         '204':
           $ref: '#/components/responses/EmptySuccess'
         default:
@@ -626,11 +681,12 @@ paths:
           in: query
           required: true
           schema:
-            type: string
+            type: integer
+            format: int32
           description: Education ID. Source element type is not enforced by CRS.
       responses:
         '200':
-          $ref: '#/components/responses/EmptySuccess'
+          $ref: '#/components/responses/OfficialEpsilonIntegerSuccess'
         '204':
           $ref: '#/components/responses/EmptySuccess'
         default:
@@ -650,7 +706,7 @@ paths:
               $ref: '#/components/schemas/EducationInput'
       responses:
         '200':
-          $ref: '#/components/responses/EmptySuccess'
+          $ref: '#/components/responses/OfficialEpsilonIntegerSuccess'
         '204':
           $ref: '#/components/responses/EmptySuccess'
         default:
@@ -664,6 +720,8 @@ paths:
       x-crs-integration-status: active
       x-crs-adapter: 'Bespoke / non-Epsilon'
       x-official-epsilon-path: /api/Candidates/SavePictureString
+      x-official-epsilon-request-schema: '#/components/schemas/OfficialPeoPictureModel'
+      x-official-epsilon-response-schema: '#/components/schemas/OfficialEpsilonIntegerSuccess'
       parameters:
         - $ref: '#/components/parameters/PeoNoPath'
       requestBody:
@@ -684,6 +742,8 @@ paths:
       summary: Save an existing candidate profile picture
       operationId: saveOnboardingCandidatePicture
       x-crs-integration-status: active
+      x-official-epsilon-path: /api/Onboarding/SavePictureString/{id}
+      x-official-epsilon-request-schema: '#/components/schemas/OfficialPictureStringModel'
       parameters:
         - $ref: '#/components/parameters/PeoNoPath'
       requestBody:
@@ -694,7 +754,7 @@ paths:
               $ref: '#/components/schemas/PictureString'
       responses:
         '200':
-          $ref: '#/components/responses/EmptySuccess'
+          $ref: '#/components/responses/OfficialEpsilonIntegerSuccess'
         '204':
           $ref: '#/components/responses/EmptySuccess'
         default:
@@ -729,6 +789,8 @@ paths:
       summary: Upload an existing candidate RTW answer
       operationId: uploadOnboardingRightToWorkAnswer
       x-crs-integration-status: active
+      x-official-epsilon-path: /api/Onboarding/UploadAnswer/{id}
+      x-official-epsilon-request-schema: '#/components/schemas/OfficialComplianceAnswerModel'
       parameters:
         - $ref: '#/components/parameters/PeoNoPath'
         - $ref: '#/components/parameters/CheckNumber'
@@ -740,7 +802,7 @@ paths:
               $ref: '#/components/schemas/RightToWorkAnswer'
       responses:
         '200':
-          $ref: '#/components/responses/EmptySuccess'
+          $ref: '#/components/responses/OfficialEpsilonIntegerSuccess'
         '204':
           $ref: '#/components/responses/EmptySuccess'
         default:
@@ -775,18 +837,24 @@ paths:
       summary: Upload an existing candidate RTW attachment
       operationId: uploadOnboardingRightToWorkAttachment
       x-crs-integration-status: active
+      x-official-epsilon-path: /api/Onboarding/UploadAttachment/{id}
       parameters:
         - $ref: '#/components/parameters/PeoNoPath'
         - $ref: '#/components/parameters/CheckNumber'
       requestBody:
         required: true
+        description: CRS currently sends the multipart part as file. The official Onboarding operation requires multipart/form-data but does not publish a form field name in discovery.
         content:
           multipart/form-data:
             schema:
               $ref: '#/components/schemas/SingleFileUpload'
       responses:
         '200':
-          $ref: '#/components/responses/EmptySuccess'
+          $ref: '#/components/responses/OfficialEpsilonObjectSuccess'
+        '400':
+          description: Candidate or compliance question was not found for the supplied ID.
+        '415':
+          description: Content-Type is not multipart/form-data.
         '204':
           $ref: '#/components/responses/EmptySuccess'
         default:
@@ -800,6 +868,8 @@ paths:
       x-crs-integration-status: active
       x-crs-adapter: 'Bespoke / non-Epsilon'
       x-official-epsilon-path: /api/Candidates/AddContactLog
+      x-official-epsilon-request-schema: '#/components/schemas/ContactLogRequest'
+      x-official-epsilon-response-schema: '#/components/schemas/OfficialEpsilonIntegerSuccess'
       parameters:
         - $ref: '#/components/parameters/PeoNoQuery'
       requestBody:
@@ -830,11 +900,7 @@ paths:
               $ref: '#/components/schemas/ContactLogRequest'
       responses:
         '200':
-          description: Contact log number returned as the raw response body.
-          content:
-            text/plain:
-              schema:
-                type: string
+          $ref: '#/components/responses/OfficialEpsilonIntegerSuccess'
         '204':
           $ref: '#/components/responses/EmptySuccess'
         default:
@@ -867,14 +933,10 @@ paths:
         content:
           multipart/form-data:
             schema:
-              type: object
-              additionalProperties:
-                type: string
-                format: binary
-              description: The multipart field name is dynamic; it is usually file or a generated filename.
+              $ref: '#/components/schemas/DynamicMultipartFileUpload'
       responses:
         '200':
-          $ref: '#/components/responses/EmptySuccess'
+          $ref: '#/components/responses/OfficialEpsilonObjectSuccess'
         '204':
           $ref: '#/components/responses/EmptySuccess'
         default:
@@ -888,6 +950,7 @@ paths:
       x-crs-integration-status: active
       x-crs-adapter: 'Bespoke / non-Epsilon'
       x-official-epsilon-path: /api/Onboarding/UploadAppPack/{id}
+      x-official-epsilon-response-schema: '#/components/schemas/UnknownObject'
       parameters:
         - $ref: '#/components/parameters/PeoNoPath'
       requestBody:
@@ -912,11 +975,7 @@ paths:
       description: Method/constant exists in CRS but no current runtime caller was found.
       responses:
         '200':
-          description: Raw pen picture value.
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Unknown'
+          $ref: '#/components/responses/OfficialEpsilonStringSuccess'
         default:
           $ref: '#/components/responses/Error'
 
@@ -932,14 +991,15 @@ paths:
           in: query
           required: true
           schema:
-            type: string
+            type: integer
+            format: int32
       responses:
         '200':
           description: Attachment list with an externally defined item schema.
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/UnknownArray'
+                $ref: '#/components/schemas/LogAttachmentArray'
         default:
           $ref: '#/components/responses/Error'
 
@@ -959,7 +1019,7 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/LoginRequest'
+              $ref: '#/components/schemas/CandidateLoginRequest'
       responses:
         '200':
           description: Candidate login response.
@@ -986,7 +1046,7 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/LoginRequest'
+              $ref: '#/components/schemas/ClientLoginRequest'
       responses:
         '200':
           description: Client login response.
@@ -1012,12 +1072,16 @@ paths:
       requestBody:
         required: true
         content:
-          application/octet-stream:
+          multipart/form-data:
             schema:
-              type: string
-              format: binary
-              description: Payload shape is unknown because there is no current caller.
+              $ref: '#/components/schemas/DynamicMultipartFileUpload'
       responses:
+        '200':
+          $ref: '#/components/responses/OfficialEpsilonObjectSuccess'
+        '400':
+          description: No candidate was found for the supplied ID.
+        '415':
+          description: Content-Type is not multipart/form-data.
         default:
           $ref: '#/components/responses/Error'
 
@@ -1062,20 +1126,23 @@ components:
       in: path
       required: true
       schema:
-        type: string
+        type: integer
+        format: int32
     PeoNoQuery:
       name: peo_no
       in: query
       required: true
       schema:
-        type: string
+        type: integer
+        format: int32
     CheckNumber:
       name: chk_no
       in: query
       required: true
       schema:
-        type: string
-        example: '1'
+        type: integer
+        format: int32
+        example: 1
     EpsilonPlatform:
       name: platform
       in: query
@@ -1087,6 +1154,31 @@ components:
   responses:
     EmptySuccess:
       description: Successful response. CRS does not parse the response body.
+    OfficialEpsilonIntegerSuccess:
+      description: Official Epsilon response is an integer. CRS currently ignores the response body.
+      content:
+        application/json:
+          schema:
+            type: integer
+            format: int32
+    OfficialEpsilonBooleanSuccess:
+      description: Official Epsilon response is a boolean. CRS currently ignores the response body.
+      content:
+        application/json:
+          schema:
+            type: boolean
+    OfficialEpsilonStringSuccess:
+      description: Official Epsilon response is a string. CRS may parse it when the reserved method is used.
+      content:
+        application/json:
+          schema:
+            type: string
+    OfficialEpsilonObjectSuccess:
+      description: Official Epsilon response is an object. CRS currently ignores the response body.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/UnknownObject'
     Error:
       description: Error response. The current CRS integration does not enforce a common error schema.
       content:
@@ -1106,6 +1198,15 @@ components:
     UnknownArray:
       type: array
       items: {}
+    IntegerArray:
+      type: array
+      items:
+        type: integer
+        format: int32
+    LogAttachmentArray:
+      type: array
+      items:
+        $ref: '#/components/schemas/LogAttachment'
     EmptyArray:
       type: array
       items: {}
@@ -1114,13 +1215,14 @@ components:
       type: string
       pattern: '^\d{4}-\d{2}-\d{2}$'
       example: '2026-10-02'
+      description: CRS wire format. The official Epsilon Swagger declares the corresponding query field as a date-time string; current CRS serializes a date-only value.
     DateTime:
       type: string
       description: Date/time string produced by the current integration.
       example: '2026-10-02T12:30:00'
     MasterTokenResponse:
       type: object
-      required: [usr_token]
+      description: Official UserToken has no required list; CRS needs usr_token to continue its token flow.
       properties:
         usr_token:
           type: string
@@ -1134,36 +1236,236 @@ components:
       properties:
         peo_no:
           type: string
+    OfficialUploadResponse:
+      type: object
+      required: [peo_no, status]
+      description: Official Epsilon UploadResponse for /api/Onboarding/RegisterCandidate.
+      properties:
+        peo_no: { type: integer, format: int32 }
+        status: { type: string }
+    OfficialPeoPictureModel:
+      type: object
+      required: [peo_picture]
+      description: Official Epsilon PeoPictureModel for /api/Candidates/SavePictureString.
+      properties:
+        peo_no: { type: integer, format: int32 }
+        peo_picture: { type: string, format: byte }
+    OfficialPictureStringModel:
+      type: object
+      description: Official Epsilon PeoPictureStringModel for /api/Onboarding/SavePictureString/{id}.
+      properties:
+        peo_no: { type: integer, format: int32 }
+        peo_string: { type: string }
+    OfficialComplianceAnswerModel:
+      type: object
+      description: Official Epsilon ComplianceAnswerModel. The discovery schema does not declare required properties.
+      properties:
+        peo_bool: { type: boolean }
+        peo_text: { type: string, maxLength: 255 }
+        peo_other: { type: string, maxLength: 255 }
+        peo_memo: { type: string }
+        peo_expiry_date: { type: string, format: date-time }
+        peo_issue_date: { type: string, format: date-time }
+    OfficialRegUploadModelV12:
+      type: object
+      required: [candidate, overview, health_and_safety, shift_preference, health_and_criminal, agreements]
+      description: Official Epsilon RegUploadModelV12. This schema is for the official onboarding route, not the current Bespoke registration route.
+      properties:
+        peo_gdpr_consenttostore: { type: boolean }
+        peo_gdpr_consenttoshare: { type: boolean }
+        peo_gdpr_consenttomarketing: { type: boolean }
+        peo_gdpr_consenttodirectcomm: { type: boolean }
+        peo_gdpr_5: { type: boolean }
+        peo_gdpr_6: { type: boolean }
+        peo_gdpr_7: { type: boolean }
+        peo_gdpr_8: { type: boolean }
+        set_avail: { type: boolean }
+        candidate:
+          $ref: '#/components/schemas/OfficialCandidateModel'
+        careers:
+          type: array
+          items:
+            $ref: '#/components/schemas/OfficialCareerModel'
+        educations:
+          type: array
+          items:
+            $ref: '#/components/schemas/OfficialEducationModel'
+        skills_numbers:
+          type: array
+          items:
+            type: integer
+            format: int32
+        overview:
+          $ref: '#/components/schemas/OfficialOverviewModel'
+        health_and_safety:
+          $ref: '#/components/schemas/OfficialHealthAndSafetyModel'
+        shift_preference:
+          $ref: '#/components/schemas/ShiftPreference'
+        health_and_criminal:
+          $ref: '#/components/schemas/HealthAndCriminal'
+        references:
+          type: array
+          items:
+            $ref: '#/components/schemas/OfficialRefereeModel'
+        agreements:
+          $ref: '#/components/schemas/Agreements'
+        ip_address: { type: string }
+        public_sector: { type: boolean }
+        start_declaration: { type: string, maxLength: 2 }
+        ltd_company:
+          $ref: '#/components/schemas/OfficialLtdCompanyModel'
+        notes: { type: string }
+    OfficialCandidateModel:
+      type: object
+      required: [peo_title, peo_forename, peo_surname, peo_establish, peo_town, peo_postcode, peo_other_tel, peo_con]
+      properties:
+        peo_no: { type: integer, format: int32 }
+        peo_title: { type: string, maxLength: 4 }
+        peo_forename: { type: string, maxLength: 16 }
+        peo_surname: { type: string, maxLength: 20 }
+        peo_known: { type: string, maxLength: 25 }
+        peo_establish: { type: string, maxLength: 30 }
+        peo_town: { type: string, maxLength: 30 }
+        peo_postcode: { type: string, maxLength: 10 }
+        peo_other_tel: { type: string, maxLength: 20 }
+        peo_pen: { type: string }
+        peo_middlename: { type: string, maxLength: 15 }
+        peo_con: { type: string, maxLength: 3 }
+        peo_status: { type: string, maxLength: 15 }
+        peo_gender: { type: string }
+        peo_street: { type: string, maxLength: 30 }
+        peo_district: { type: string, maxLength: 30 }
+        peo_county: { type: string, maxLength: 25 }
+        peo_country: { type: string, maxLength: 20 }
+        peo_email: { type: string, maxLength: 80 }
+        peo_home_tel: { type: string, maxLength: 20 }
+        peo_source: { type: string, maxLength: 19 }
+        peo_date_birth: { type: string, format: date-time }
+        peo_salary_sought: { type: integer, format: int32 }
+        peo_seek: { type: string, maxLength: 30 }
+        peo_nationality: { type: string, maxLength: 15 }
+        peo_ni: { type: string, maxLength: 13 }
+        peo_bank_name: { type: string, maxLength: 30 }
+        peo_bank_acc_name: { type: string, maxLength: 40 }
+        peo_bank_number: { type: string, maxLength: 8 }
+        peo_bank_sort_code: { type: string, maxLength: 8 }
+        peo_pay_method: { type: string, maxLength: 10 }
+        peo_payroll_no: { type: string, maxLength: 10 }
+        peo_pickup_point: { type: string }
+        peo_student_load: { type: boolean }
+        peo_driver: { type: boolean }
+        peo_starter_dec_byemployee: { type: boolean }
+        peo_reason_for_leaving: { type: string, maxLength: 30 }
+    OfficialCareerModel:
+      type: object
+      properties:
+        emp_from: { type: string, format: date-time }
+        emp_to: { type: string, format: date-time }
+        emp_cli_name: { type: string, maxLength: 50 }
+        emp_job_title: { type: string, maxLength: 50 }
+        emp_salary: { type: integer, format: int32 }
+        emp_responsibilities: { type: string }
+    OfficialEducationModel:
+      type: object
+      properties:
+        edu_quals: { type: string, maxLength: 50 }
+        edu_school: { type: string, maxLength: 40 }
+        edu_from: { type: string, format: date-time }
+        edu_to: { type: string, format: date-time }
+    OfficialOverviewModel:
+      type: object
+      properties:
+        transport_type: { type: string }
+        travel_radius: { type: string }
+        currently_employed: { type: boolean }
+        notice_period: { type: string }
+        available_at_short_notice: { type: boolean }
+        pre_booked_unavailability: { type: string }
+        working_restrictions: { type: string }
+    OfficialOwnClothingModel:
+      type: object
+      properties:
+        own: { type: boolean }
+        size: { type: string }
+    OfficialHealthAndSafetyModel:
+      type: object
+      required: [owns_safety_boots, owns_hi_viz_vest]
+      properties:
+        owns_safety_boots:
+          $ref: '#/components/schemas/OfficialOwnClothingModel'
+        owns_hi_viz_vest:
+          $ref: '#/components/schemas/OfficialOwnClothingModel'
+    OfficialRefereeModel:
+      type: object
+      properties:
+        name: { type: string }
+        company: { type: string }
+        job_title: { type: string }
+        tel: { type: string }
+        email: { type: string }
+        can_we_reference: { type: boolean }
+        ref_emailed_on: { type: string, format: date-time }
+    OfficialLtdCompanyModel:
+      type: object
+      properties:
+        name: { type: string }
+        number: { type: string }
     CandidateDetails:
       type: object
       properties:
-        peo_no: { type: string }
+        peo_no: { type: integer, format: int32 }
+        peo_updated: { type: string, format: date-time }
+        peo_grp: { type: string }
+        peo_branch: { type: string }
+        peo_division: { type: string }
+        peo_ni: { type: string }
         peo_title: { type: string }
         peo_forename: { type: string }
         peo_surname: { type: string }
+        peo_known: { type: string }
         peo_establish: { type: string }
+        peo_street: { type: string }
+        peo_district: { type: string }
         peo_town: { type: string }
         peo_county: { type: string }
         peo_postcode: { type: string }
         peo_country: { type: string }
-        peo_date_birth: { $ref: '#/components/schemas/DateTime' }
+        peo_status: { type: string }
+        peo_status_date: { type: string, format: date-time }
+        peo_home_tel: { type: string }
+        peo_work_tel: { type: string }
         peo_other_tel: { type: string }
         peo_email: { type: string }
-        peo_status: { type: string }
-        peo_status_date: { $ref: '#/components/schemas/DateTime' }
+        peo_date_birth: { type: string, format: date-time }
+        peo_reloc: { type: boolean }
+        peo_marital_status: { type: string }
+        peo_driver: { type: boolean }
         peo_nationality: { type: string }
+        peo_empl_type: { type: string }
+        peo_region: { type: string }
+        peo_x: { type: number, format: double }
+        peo_y: { type: number, format: double }
     Career:
       type: object
+      required: [emp_from, emp_cli_name, emp_job_title]
       properties:
-        emp_no: {}
-        emp_cli_name: { type: string }
-        emp_job_title: { type: string }
+        emp_no: { type: integer, format: int32 }
+        peo_no: { type: integer, format: int32 }
+        cli_no: { type: integer, format: int32 }
+        job_no: { type: integer, format: int32 }
+        emp_cli_name: { type: string, maxLength: 50 }
+        emp_job_title: { type: string, maxLength: 50 }
         emp_responsibilities: { type: string }
-        emp_from: { type: string }
-        emp_to: { type: string }
+        emp_from: { type: integer, format: int32 }
+        emp_to: { type: integer, format: int32 }
+        emp_salary: { type: integer, format: int32 }
+        emp_ote: { type: integer, format: int32 }
+        emp_reporting_to: { type: string, maxLength: 30 }
+        emp_reporting_to_peo_no: { type: integer, format: int32 }
+        emp_benefits: { type: string, maxLength: 30 }
     CareerResponse:
       type: object
-      required: [careers]
+      description: Official CandidateCareerHistory does not declare careers as required; CRS expects the careers property when parsing the response.
       properties:
         careers:
           type: array
@@ -1171,13 +1473,14 @@ components:
             $ref: '#/components/schemas/Career'
     Education:
       type: object
+      required: [peo_no]
       properties:
-        edu_no: {}
-        peo_no: {}
-        edu_school: { type: string }
-        edu_quals: { type: string }
-        edu_from: { type: string }
-        edu_to: { type: string }
+        edu_no: { type: integer, format: int32 }
+        peo_no: { type: integer, format: int32 }
+        edu_school: { type: string, maxLength: 40 }
+        edu_quals: { type: string, maxLength: 50 }
+        edu_from: { type: integer, format: int32 }
+        edu_to: { type: integer, format: int32 }
     StatusChange:
       type: object
       properties:
@@ -1187,10 +1490,7 @@ components:
       type: object
       properties:
         Id: { type: integer, format: int32 }
-        Value:
-          oneOf:
-            - type: boolean
-            - type: string
+        Value: { type: boolean }
     OnPlanItem:
       type: object
       properties:
@@ -1208,35 +1508,63 @@ components:
           items:
             type: object
             properties:
+              hrc_no: { type: integer, format: int32 }
+              hrc_parent_no: { type: integer, format: int32 }
+              hrc_desc: { type: string }
               keywords:
                 type: array
                 items:
                   type: object
                   properties:
-                    keyword_no: {}
-                    keyword: { type: string }
+                    keyword_no: { type: integer, format: int32 }
+                    class_no: { type: integer, format: int32 }
+                    keyword: { type: string, maxLength: 50 }
+                    approved: { type: boolean }
+                    description: { type: string, maxLength: 255 }
+                    approval: { type: string, format: date-time }
     PeoNoList:
       type: array
       items:
-        type: string
+        type: integer
+        format: int32
+    LogAttachment:
+      type: object
+      properties:
+        log_no: { type: integer, format: int32 }
+        att_no: { type: integer, format: int32 }
+        att_filename: { type: string, maxLength: 128 }
+        att_folder: { type: string, maxLength: 32 }
+        att_created_date: { type: string, format: date-time }
+        att_created_time: { type: string, maxLength: 5 }
+        att_modified_date: { type: string, format: date-time }
+        att_modified_time: { type: string, maxLength: 5 }
+        att_file_data: { type: string, format: byte }
     CareerInput:
       type: object
-      required: [emp_cli_name, emp_responsibilities, emp_job_title, emp_from, emp_to]
+      required: [emp_cli_name, emp_job_title, emp_from]
       properties:
-        emp_cli_name: { type: string }
+        emp_cli_name: { type: string, maxLength: 50 }
         emp_responsibilities: { type: string }
-        emp_job_title: { type: string }
-        emp_from: { type: string }
-        emp_to: { type: string }
+        emp_job_title: { type: string, maxLength: 50 }
+        emp_from: { type: integer, format: int32 }
+        emp_to: { type: integer, format: int32 }
+        cli_no: { type: integer, format: int32 }
+        job_no: { type: integer, format: int32 }
+        emp_salary: { type: integer, format: int32 }
+        emp_ote: { type: integer, format: int32 }
+        emp_reporting_to: { type: string, maxLength: 30 }
+        emp_reporting_to_peo_no: { type: integer, format: int32 }
+        emp_benefits: { type: string, maxLength: 30 }
     EducationInput:
       type: object
-      required: [peo_no, edu_quals, edu_school, edu_from, edu_to]
+      required: [peo_no]
       properties:
-        peo_no: {}
-        edu_quals: { type: string }
-        edu_school: { type: string }
-        edu_from: { type: string }
-        edu_to: { type: string }
+        edu_no: { type: integer, format: int32 }
+        peo_no: { type: integer, format: int32 }
+        edu_quals: { type: string, maxLength: 50 }
+        edu_school: { type: string, maxLength: 40 }
+        edu_from: { type: integer, format: int32 }
+        edu_to: { type: integer, format: int32 }
     CandidateStandard:
       type: object
       properties:
@@ -1416,7 +1744,8 @@ components:
         peo_title: { type: string }
         peo_forename: { type: string }
         peo_surname: { type: string }
-        peo_date_birth: { type: string }
+        peo_known: { type: string }
+        peo_date_birth: { type: string, format: date-time }
         peo_nationality: { type: string }
         peo_establish: { type: string }
         peo_street: { type: string }
@@ -1425,7 +1754,19 @@ components:
         peo_county: { type: string }
         peo_postcode: { type: string }
         peo_country: { type: string }
+        peo_status: { type: string }
+        peo_status_date: { type: string, format: date-time }
+        peo_home_tel: { type: string }
+        peo_work_tel: { type: string }
         peo_other_tel: { type: string }
+        peo_email: { type: string }
+        peo_reloc: { type: boolean }
+        peo_marital_status: { type: string }
+        peo_driver: { type: boolean }
+        peo_empl_type: { type: string }
+        peo_region: { type: string }
+        peo_x: { type: number, format: double }
+        peo_y: { type: number, format: double }
     CandidateLiveUpdate:
       type: object
       required: [peo_status, peo_status_date, peo_date_birth]
@@ -1433,37 +1774,46 @@ components:
         peo_status:
           type: string
           enum: [Live]
-        peo_status_date: { type: string }
-        peo_date_birth: { type: string }
+        peo_status_date: { type: string, format: date-time }
+        peo_date_birth: { type: string, format: date-time }
     PaymentDetails:
       type: object
-      required: [peo_bank_name, peo_bank_acc_name, peo_bank_number, peo_bank_sort_code]
+      required: [peo_bank_number, peo_bank_sort_code]
       properties:
         peo_bank_name: { type: string }
         peo_bank_acc_name: { type: string }
         peo_bank_number: { type: string }
         peo_bank_sort_code: { type: string }
         peo_ni: { type: string }
+        peo_bank_society_no: { type: string }
     BankDetails:
       type: object
-      required: [peo_bank_name, peo_bank_acc_name, peo_bank_number, peo_bank_sort_code]
       properties:
         peo_bank_name: { type: string }
+        peo_bank_establish: { type: string }
+        peo_bank_street: { type: string }
+        peo_bank_district: { type: string }
+        peo_bank_town: { type: string }
+        peo_bank_county: { type: string }
+        peo_bank_postcode: { type: string }
         peo_bank_acc_name: { type: string }
         peo_bank_number: { type: string }
         peo_bank_sort_code: { type: string }
+        peo_bank_society_no: { type: string }
     SkillCodes:
       type: object
       required: [keyword_no_arr]
       properties:
         keyword_no_arr:
           type: array
-          items: {}
+          items:
+            type: integer
+            format: int32
     PictureString:
       type: object
       required: [peo_no, peo_string]
       properties:
-        peo_no: { type: string }
+        peo_no: { type: integer, format: int32 }
         peo_string:
           type: string
           format: byte
@@ -1472,8 +1822,8 @@ components:
       required: [peo_bool, peo_text, peo_other, peo_expiry_date, peo_issue_date]
       properties:
         peo_bool: { type: boolean }
-        peo_text: { type: string }
-        peo_other: { type: string }
+        peo_text: { type: string, maxLength: 255 }
+        peo_other: { type: string, maxLength: 255 }
         peo_memo: { type: string }
         peo_expiry_date: { type: string, format: date-time }
         peo_issue_date: { type: string, format: date-time }
@@ -1484,6 +1834,9 @@ components:
         log_action: { type: string }
         log_subject: { type: string }
         log_txt: { type: string }
+        cli_no: { type: integer, format: int32 }
+        job_no: { type: integer, format: int32 }
+        peo_no: { type: integer, format: int32 }
     SingleFileUpload:
       type: object
       required: [file]
@@ -1491,18 +1844,63 @@ components:
         file:
           type: string
           format: binary
-    LoginRequest:
+    OfficialFileUpload:
+      type: object
+      required: [File]
+      description: Official Candidates/UploadAttachment form field.
+      properties:
+        File:
+          type: string
+          format: binary
+    DynamicMultipartFileUpload:
+      type: object
+      additionalProperties:
+        type: string
+        format: binary
+      description: Multipart file body. The official Onboarding Swagger requires multipart/form-data but does not publish a form field name.
+    PeoDeviceLogin:
+      type: object
+      required: [model, platform, uuid, version, manufacturer, name, app_name]
+      properties:
+        model: { type: string, maxLength: 120 }
+        platform: { type: string, maxLength: 20 }
+        uuid: { type: string, maxLength: 64 }
+        version: { type: string, maxLength: 10 }
+        manufacturer: { type: string, maxLength: 64 }
+        firebase_token: { type: string, maxLength: 256 }
+        name: { type: string, maxLength: 256 }
+        app_name: { type: string, maxLength: 100 }
+    CandidateLoginRequest:
+      type: object
+      required: [username, password]
+      properties:
+        device:
+          $ref: '#/components/schemas/PeoDeviceLogin'
+        remember_me:
+          type: boolean
+          description: Candidate login option published by Epsilon; defaults to false.
+        username: { type: string }
+        password: { type: string, format: password }
+        ip_address: { type: string }
+    ClientLoginRequest:
       type: object
       required: [username, password]
       properties:
         username: { type: string }
         password: { type: string, format: password }
         ip_address: { type: string }
+    LoginRequest:
+      type: object
+      deprecated: true
+      description: Legacy union kept for compatibility; use CandidateLoginRequest or ClientLoginRequest.
+      properties:
+        username: { type: string }
+        password: { type: string, format: password }
+        ip_address: { type: string }
         remember_me:
           type: boolean
-          description: Candidate login option published by Epsilon; defaults to false.
         device:
-          $ref: '#/components/schemas/UnknownObject'
+          $ref: '#/components/schemas/PeoDeviceLogin'
     CandidateLoginResponse:
       type: object
       properties:

@@ -26,6 +26,12 @@ The contract is intentionally scoped to the CRS integration inventory. It
 keeps Epsilon calls separate from Bespoke/non-Epsilon calls made by the CRS
 codebase; it is not a complete mirror of all 274 Epsilon paths.
 
+The input/output and datatype audit is recorded in
+[`matchmaker-api-docs.md`](matchmaker-api-docs.md), section 1.4. It includes the
+official success response type even where CRS currently checks only HTTP status,
+and marks route, body, multipart, date-format and field-type differences between
+the official Epsilon Swagger and the current CRS adapter.
+
 ## Local preview
 
 Serve this directory with any static file server, then open index.html.
