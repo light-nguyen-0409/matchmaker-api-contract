@@ -22,6 +22,8 @@ version `2.0.1.0` (274 published paths, snapshot checked 2026-10-07).
 
 - openapi.yaml — OpenAPI 3.0.3 contract.
 - epsilon-openapi.json — complete official Epsilon Swagger 2.0.1.0 snapshot (274 paths, 275 operations).
+- openapi-bundle.json — generated JSON bundle containing the complete official Epsilon catalog, the CRS Epsilon adapter document, and the CRS Bespoke/non-Epsilon adapter document.
+- scripts/build-openapi-bundle.rb — regenerates `openapi-bundle.json` from the two source specifications.
 - official-epsilon-api-gap.md — inventory of the 238 official path entries added beyond the previous CRS inventory.
 - index.html — static Swagger UI entry point with separate Epsilon and Bespoke / non-Epsilon views.
 - .github/workflows/deploy-pages.yml — GitHub Pages deployment.
@@ -31,6 +33,22 @@ the Epsilon and Bespoke/non-Epsilon adapter metadata together. The hosted
 Epsilon view loads the complete official catalog from `epsilon-openapi.json` and
 keeps a separate CRS Epsilon adapter inventory below it, while the Bespoke view
 shows only the direct CRS routes.
+
+`openapi-bundle.json` is an envelope JSON document for consumers that need all
+three views in one file. Its `groups` array contains `epsilon-official`,
+`epsilon-crs`, and `bespoke`. Each group includes `adapter`, `source`, path and
+operation counts, and the complete nested `document`. Each operation also has
+the `x-api-group` extension, so consumers can identify its group without
+depending on the array position. Regenerate it after changing either source
+specification:
+
+```sh
+ruby scripts/build-openapi-bundle.rb
+```
+
+The bundle intentionally keeps the three specifications as nested documents.
+This preserves both the official Epsilon definition and the CRS definition
+when the same path and method appear in both documents.
 
 The input/output and datatype audit is recorded in
 [`matchmaker-api-docs.md`](matchmaker-api-docs.md), section 1.4. It includes the
